@@ -1,0 +1,33 @@
+<?php
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\UmkmController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ConsignmentController;
+use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\UmkmUserDashboardController;
+use App\Http\Controllers\LaporanController;
+
+Route::post('/login', [AuthController::class, 'login']);
+
+Route::middleware(['api', 'auth:sanctum'])->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::apiResource('umkms', UmkmController::class);
+    Route::put('/umkms/{umkm}/status', [UmkmController::class, 'updateStatus']);
+    Route::apiResource('products', ProductController::class);
+    Route::apiResource('consignments', ConsignmentController::class);
+
+    // UMKM User Routes
+    Route::get('/umkm-user/dashboard', [UmkmUserDashboardController::class, 'dashboard']);
+    Route::get('/umkm-user/products', [UmkmUserDashboardController::class, 'products']);
+    Route::get('/umkm-user/consignments', [UmkmUserDashboardController::class, 'consignments']);
+
+    // Admin Routes
+    Route::get('/admin/dashboard/stats', [AdminDashboardController::class, 'stats']);
+    Route::get('/admin/dashboard/activities', [AdminDashboardController::class, 'activities']);
+
+    Route::get('/export', [LaporanController::class, 'export']);
+});
