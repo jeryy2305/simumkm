@@ -16,8 +16,9 @@ class ProductController extends Controller
     {
         $request->validate([
             'name' => 'required',
-            'category' => 'required|in:Makanan,Minuman',
+            'category' => 'required|in:Makanan,Minuman,Lainnya',
             'price' => 'required|numeric',
+            'quantity' => 'required|integer|min:0',
             'status' => 'required|in:available,unavailable',
             'umkm_id' => 'required|exists:umkms,id',
         ]);
@@ -35,8 +36,9 @@ class ProductController extends Controller
     {
         $request->validate([
             'name' => 'required',
-            'category' => 'required|in:Makanan,Minuman',
+            'category' => 'required|in:Makanan,Minuman,Lainnya',
             'price' => 'required|numeric',
+            'quantity' => 'required|integer|min:0',
             'status' => 'required|in:available,unavailable',
             'umkm_id' => 'required|exists:umkms,id',
         ]);

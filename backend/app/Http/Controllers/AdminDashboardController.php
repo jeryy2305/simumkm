@@ -20,7 +20,12 @@ class AdminDashboardController extends Controller
             ->whereHas('umkm', function ($query) {
                 $query->where('status', 'active');
             })
-            ->sum('quantity');
+            ->with('product')
+            ->get()
+            ->sum(function ($consignment) {
+                return $consignment->product?->quantity ?? 0;
+            });
+
         $totalNilaiDistribusi = Consignment::with('product')
             ->where('status', 'completed')
             ->whereHas('umkm', function ($query) {
@@ -28,7 +33,8 @@ class AdminDashboardController extends Controller
             })
             ->get()
             ->sum(function ($consignment) {
-                return $consignment->quantity * $consignment->product->price;
+                if (!$consignment->product) return 0;
+                return $consignment->product->quantity * $consignment->product->price;
             });
 
         return response()->json([
@@ -58,8 +64,8 @@ class AdminDashboardController extends Controller
                     'date' => $consignment->created_at->format('d M Y'),
                     'type' => $statusMap[$consignment->status] ?? 'Unknown',
                     'partner' => $consignment->company,
-                    'product' => $consignment->product->name,
-                    'qty' => $consignment->quantity,
+                    'product' => $consignment->product ? $consignment->product->name : 'Produk Terhapus',
+                    'qty' => $consignment->product ? $consignment->product->quantity : 0,
                     'status' => $statusMap[$consignment->status] ?? 'Unknown',
                 ];
             });

@@ -71,16 +71,16 @@ class LaporanController extends Controller
         $data = [];
 
         foreach ($consignments as $consignment) {
-            $monthKey = Carbon::parse($consignment->start_date)->format('Y-m');
-            $monthLabel = Carbon::parse($consignment->start_date)->format('F Y');
+            $dateKey = Carbon::parse($consignment->start_date)->format('Y-m-d');
+            $dateLabel = Carbon::parse($consignment->start_date)->translatedFormat('d F Y');
             $ownerName = $consignment->umkm?->owner ?? 'Tidak Diketahui';
-            $compositeKey = $ownerName . '-' . $monthKey;
+            $compositeKey = $ownerName . '-' . $dateKey;
 
             if (!isset($data[$compositeKey])) {
                 $data[$compositeKey] = [
                     'owner' => $ownerName,
-                    'month_key' => $monthKey,
-                    'month' => $monthLabel,
+                    'date_key' => $dateKey,
+                    'date' => $dateLabel,
                     'masuk' => 0,
                     'keluar' => 0,
                     'value' => 0,
@@ -88,23 +88,23 @@ class LaporanController extends Controller
             }
 
             if ($consignment->status === 'active') {
-                $data[$compositeKey]['masuk'] += $consignment->quantity;
+                $data[$compositeKey]['masuk'] += $consignment->product ? $consignment->product->quantity : 0;
             }
 
             if ($consignment->status === 'completed') {
-                $data[$compositeKey]['keluar'] += $consignment->quantity;
+                $qty = $consignment->product ? $consignment->product->quantity : 0;
+                $data[$compositeKey]['keluar'] += $qty;
                 $price = $consignment->product?->price ?? 0;
-                $data[$compositeKey]['value'] += $consignment->quantity * $price;
+                $data[$compositeKey]['value'] += $qty * $price;
             }
         }
 
-        return array_values(collect($data)->sort(function ($a, $b) {
-            // Sort by owner first, then by month_key descending
-            if ($a['owner'] !== $b['owner']) {
-                return strcmp($a['owner'], $b['owner']);
+        return collect($data)->sort(function ($a, $b) {
+            if ($a['date_key'] !== $b['date_key']) {
+                return strcmp($b['date_key'], $a['date_key']);
             }
-            return strcmp($b['month_key'], $a['month_key']);
-        })->values()->all());
+            return strcmp($a['owner'], $b['owner']);
+        })->values()->all();
     }
 
     private function exportPdf(?Carbon $startDate, ?Carbon $endDate, ?string $filterOwner)

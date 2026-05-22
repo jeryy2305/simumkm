@@ -17,7 +17,7 @@ class ConsignmentController extends Controller
         $request->validate([
             'company' => 'required',
             'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer',
+            'quantity' => 'required|integer|min:1',
             'duration_days' => 'required|integer',
             'start_date' => 'required|date',
             'status' => 'required|in:active,completed,cancelled',
@@ -37,7 +37,6 @@ class ConsignmentController extends Controller
     {
         $request->validate([
             'company' => 'required',
-            'quantity' => 'required|integer',
             'duration_days' => 'required|integer',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date',
