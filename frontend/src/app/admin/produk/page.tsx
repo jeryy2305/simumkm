@@ -22,6 +22,7 @@ export default function DataProduk() {
         name: '',
         category: 'Makanan',
         price: 0,
+        quantity: 0,
         status: 'available',
         umkm_id: '' as string | number
     });
@@ -40,11 +41,8 @@ export default function DataProduk() {
 
             if (!prodRes.ok || !umkmRes.ok) throw new Error('Failed to fetch data');
 
-            const prodData = await parseJson<any[]>(prodRes);
-            const umkmData = await parseJson<any[]>(umkmRes);
-
-            setProducts(prodData);
-            setUmkmsList(umkmData);
+            setProducts(await parseJson<any[]>(prodRes));
+            setUmkmsList(await parseJson<any[]>(umkmRes));
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -77,6 +75,7 @@ export default function DataProduk() {
             name: '',
             category: 'Makanan',
             price: 0,
+            quantity: 0,
             status: 'available',
             umkm_id: activeUmkms.length > 0 ? activeUmkms[0].id : ''
         });
@@ -89,6 +88,7 @@ export default function DataProduk() {
             name: item.name,
             category: item.category,
             price: item.price,
+            quantity: item.quantity ?? 0,
             status: item.status,
             umkm_id: item.umkm_id
         });
@@ -204,7 +204,7 @@ export default function DataProduk() {
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Info Produk</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Pemilik (UMKM)</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Kategori</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Status</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Kuantitas</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-right">Manajemen</th>
                                 </tr>
                             </thead>
@@ -229,12 +229,9 @@ export default function DataProduk() {
                                                 <Tag size={12} /> {item.category}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6">
-                                            <span className={`inline-flex px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${item.status === "available"
-                                                ? "bg-green-100 text-green-700"
-                                                : "bg-red-100 text-red-700"
-                                                }`}>
-                                                {item.status === "available" ? "✓ Tersedia" : "⚠ Habis"}
+                                        <td className="py-4 px-6 text-center">
+                                            <span className="inline-flex items-center justify-center px-3 py-1 rounded-lg text-xs font-extrabold bg-blue-50 text-blue-950 border border-blue-100">
+                                                {item.quantity ?? 0} unit
                                             </span>
                                         </td>
                                         <td className="py-4 px-6 text-right">
@@ -292,7 +289,7 @@ export default function DataProduk() {
                             placeholder="Contoh: Keripik Singkong Balado..."
                         />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Kategori</label>
                             <select
@@ -307,7 +304,7 @@ export default function DataProduk() {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Harga Jual (Rp)</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Harga Produk (Rp)</label>
                             <input
                                 type="number"
                                 required
@@ -318,20 +315,21 @@ export default function DataProduk() {
                                 placeholder="10000"
                             />
                         </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Kuantitas (Unit)</label>
+                            <input
+                                type="number"
+                                required
+                                min="0"
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800"
+                                value={formData.quantity}
+                                onChange={e => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                                placeholder="0"
+                            />
+                        </div>
                     </div>
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Status Stok</label>
-                        <select
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer"
-                            value={formData.status}
-                            onChange={e => setFormData({ ...formData, status: e.target.value })}
-                        >
-                            <option value="available">● Tersedia di gudang</option>
-                            <option value="unavailable">○ Stok Habis</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Penyuplai / UMKM Pemilik</label>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Pemilik UMKM</label>
                         <select
                             required
                             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer"
@@ -340,7 +338,7 @@ export default function DataProduk() {
                         >
                             <option value="" disabled>-- Pilih Entitas Mitra --</option>
                             {activeUmkms.map(umkm => (
-                                <option key={umkm.id} value={umkm.id}>{umkm.owner} / {umkm.name}</option>
+                                <option key={umkm.id} value={umkm.id}>{umkm.owner}</option>
                             ))}
                         </select>
                     </div>

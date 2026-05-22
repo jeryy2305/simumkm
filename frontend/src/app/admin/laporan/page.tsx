@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Calendar, Download, TrendingUp, BarChart3, Package, Users, PackageOpen } from "lucide-react";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Modal } from "@/components/Modal";
+import { Eye } from "lucide-react";
 
 const initialSummaryData = [
     { label: "Barang Masuk", value: "0", icon: Package, color: "text-blue-500", bg: "bg-blue-100" },
@@ -13,7 +15,7 @@ const initialSummaryData = [
 ];
 
 const initialMonthlyData = [
-    { owner: "-", month: "-", masuk: 0, keluar: 0, value: "Rp 0" },
+    { owner: "-", tanggal: "-", masuk: 0, keluar: 0, value: "Rp 0" },
 ];
 
 const initialReportData = [
@@ -26,8 +28,17 @@ function formatCurrency(value: number) {
 
 function formatDate(dateString?: string) {
     if (!dateString) return "-";
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? "-" : date.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return "-";
+        return date.toLocaleDateString("id-ID", { 
+            day: "numeric", 
+            month: "long", 
+            year: "numeric" 
+        });
+    } catch (e) {
+        return "-";
+    }
 }
 
 function toMonthKey(dateString: string) {
@@ -54,6 +65,8 @@ export default function Laporan() {
     const [endDate, setEndDate] = useState("");
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [filterOwner, setFilterOwner] = useState("");
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [selectedDetailData, setSelectedDetailData] = useState<any>(null);
 
     const processData = (consignments: any[], filterOwner: string) => {
         const filtered = consignments.filter((item: any) => {
@@ -73,11 +86,12 @@ export default function Laporan() {
 
         const activeConsignments = filtered.filter((item: any) => item.status === "active");
         const completedConsignments = filtered.filter((item: any) => item.status === "completed");
-        const totalMasuk = activeConsignments.reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0);
-        const totalKeluar = completedConsignments.reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0);
+        const totalMasuk = activeConsignments.reduce((sum: number, item: any) => sum + Number(item.product?.quantity || 0), 0);
+        const totalKeluar = completedConsignments.reduce((sum: number, item: any) => sum + Number(item.product?.quantity || 0), 0);
         const totalValue = completedConsignments.reduce((sum: number, item: any) => {
+            const qty = Number(item.product?.quantity || 0);
             const price = Number(item.product?.price || 0);
-            return sum + Number(item.quantity || 0) * price;
+            return sum + qty * price;
         }, 0);
         const activeUmkms = new Set(filtered.filter((item: any) => item.status !== "cancelled").map((item: any) => item.umkm?.name || item.umkm_id)).size;
 
@@ -88,46 +102,55 @@ export default function Laporan() {
             { label: "Jejaring UMKM Aktif", value: activeUmkms.toString(), icon: Users, color: "text-purple-600", bg: "bg-purple-100" },
         ]);
 
-        const monthlyMap = new Map<string, { owner: string; month: string; masuk: number; keluar: number; value: number }>();
+        const dailyMap = new Map<string, { owner: string; dateKey: string; dateLabel: string; masuk: number; keluar: number; value: number; items: any[] }>();
         filtered.forEach((item: any) => {
-            const dateKey = toMonthKey(item.created_at || item.start_date || "");
-            const monthLabel = toMonthLabel(item.created_at || item.start_date || "");
+            const dateValue = item.created_at || item.start_date || "";
+            if (!dateValue) return;
+
+            const dateObj = new Date(dateValue);
+            if (isNaN(dateObj.getTime())) return;
+
+            // Group by Day (YYYY-MM-DD)
+            const dateKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
+            const dateLabel = formatDate(dateValue);
             const ownerName = item.umkm?.owner || "Tidak Diketahui";
             const compositeKey = `${ownerName}-${dateKey}`;
             
-            if (!monthLabel || monthLabel === "-") return;
+            const existing = dailyMap.get(compositeKey) ?? { owner: ownerName, dateKey: dateKey, dateLabel: dateLabel, masuk: 0, keluar: 0, value: 0, items: [] as any[] };
+            const currentQty = Number(item.product?.quantity || 0);
+            const currentPrice = Number(item.product?.price || 0);
 
-            const existing = monthlyMap.get(compositeKey) ?? { owner: ownerName, month: monthLabel, masuk: 0, keluar: 0, value: 0 };
             if (item.status === "active") {
-                existing.masuk += Number(item.quantity || 0);
+                existing.masuk += currentQty;
             }
             if (item.status === "completed") {
-                existing.keluar += Number(item.quantity || 0);
-                existing.value += Number(item.quantity || 0) * Number(item.product?.price || 0);
+                existing.keluar += currentQty;
+                existing.value += currentQty * currentPrice;
             }
-            monthlyMap.set(compositeKey, existing);
+            
+            existing.items.push(item);
+            dailyMap.set(compositeKey, existing);
         });
 
-        const monthlyRows = Array.from(monthlyMap.entries())
+        const dailyRows = Array.from(dailyMap.values())
             .sort((a, b) => {
-                // Sort by owner first, then by date descending
-                const [, aData] = a;
-                const [, bData] = b;
-                if (aData.owner !== bData.owner) {
-                    return aData.owner.localeCompare(bData.owner);
+                if (a.dateKey !== b.dateKey) {
+                    return b.dateKey.localeCompare(a.dateKey);
                 }
-                return b[0].split('-')[1].localeCompare(a[0].split('-')[1]);
+                return a.owner.localeCompare(b.owner);
             })
-            .map(([, value]) => ({
+            .map((value) => ({
                 owner: value.owner,
-                month: value.month,
+                tanggal: value.dateLabel,
                 masuk: value.masuk,
                 keluar: value.keluar,
                 value: formatCurrency(value.value),
+                items: value.items,
+                totalRawValue: value.value
             }))
-            .slice(0, 8);
+            .slice(0, 15);
 
-        setMonthlyData(monthlyRows.length > 0 ? monthlyRows : initialMonthlyData);
+        setMonthlyData(dailyRows.length > 0 ? dailyRows : initialMonthlyData);
 
         const sortedReport = filtered
             .slice()
@@ -137,11 +160,11 @@ export default function Laporan() {
                 date: formatDate(item.created_at || item.start_date),
                 umkm: item.umkm?.name || item.umkm?.owner || "-",
                 product: item.product?.name || "-",
-                qty: Number(item.quantity || 0),
+                qty: Number(item.product?.quantity || 0),
                 destination: item.company || item.location || "-",
-                status: item.status === "active" ? "PROSES" : item.status === "completed" ? "TERKIRIM" : "DIBATALKAN",
+                status: item.status === "active" ? "MASUK" : item.status === "completed" ? "KELUAR" : "DIBATALKAN",
                 rawStatus: item.status,
-                value: formatCurrency(Number(item.quantity || 0) * Number(item.product?.price || 0)),
+                value: formatCurrency(Number(item.product?.quantity || 0) * Number(item.product?.price || 0)),
             }));
 
         setReportData(sortedReport.length > 0 ? sortedReport : initialReportData);
@@ -155,7 +178,7 @@ export default function Laporan() {
             if (!monthLabel || monthLabel === "-") return;
 
             const existing = chartMap.get(dateKey) ?? { month: monthLabel, total: 0, monthKey: dateKey };
-            existing.total += Number(item.quantity || 0);
+            existing.total += Number(item.product?.quantity || 0) * Number(item.product?.price || 0);
             chartMap.set(dateKey, existing);
         });
 
@@ -246,15 +269,22 @@ export default function Laporan() {
 
             const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
+            a.style.display = "none";
             a.href = downloadUrl;
-            a.download = `Rekapan_Bulanan.pdf`;
+            a.download = `Laporan_Rekapitulasi_${new Date().getTime()}.pdf`;
             document.body.appendChild(a);
             a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(downloadUrl);
+            
+            // Berikan sedikit jeda sebelum membersihkan agar browser sempat memulai download
+            setTimeout(() => {
+                window.URL.revokeObjectURL(downloadUrl);
+                if (document.body.contains(a)) {
+                    document.body.removeChild(a);
+                }
+            }, 500);
             
             console.log("Export successful!");
-            alert("Laporan berhasil diunduh!");
+            alert("Laporan berhasil dibuat dan proses pengunduhan sedang dimulai.");
         } catch (error: any) {
             console.error("Export Error:", error);
             alert(error.message);
@@ -293,7 +323,7 @@ export default function Laporan() {
     }, [filterOwner]);
 
     const statusBadge = (rawStatus: string, label: string) => {
-        if (rawStatus === "active") return <span className="inline-flex px-3 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-wider rounded-md border border-amber-200">↻ {label}</span>;
+        if (rawStatus === "active") return <span className="inline-flex px-3 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-wider rounded-md border border-blue-200">↻ {label}</span>;
         if (rawStatus === "completed") return <span className="inline-flex px-3 py-1 bg-green-100 text-green-700 text-[10px] font-bold uppercase tracking-wider rounded-md border border-green-200">✓ {label}</span>;
         return <span className="inline-flex px-3 py-1 bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider rounded-md border border-red-200">✕ {label}</span>;
     };
@@ -340,15 +370,15 @@ export default function Laporan() {
                 })}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            <div className="grid grid-cols-1 gap-8">
                 {/* Chart */}
-                <div className="lg:col-span-2 bg-white rounded-4xl p-6 border border-gray-100 shadow-sm flex flex-col">
+                <div className="bg-white rounded-4xl p-8 border border-gray-100 shadow-sm flex flex-col h-[450px]">
                     <h2 className="text-xl font-extrabold text-blue-950 mb-2">Grafik Performa Bulanan</h2>
-                    <p className="text-sm font-medium text-gray-500 mb-6">Total kuantitas distribusi produk per bulan</p>
+                    <p className="text-sm font-medium text-gray-500 mb-6">Total nilai distribusi produk per bulan</p>
 
                     {chartData.length > 0 ? (
                         <div className="flex-1 w-full">
-                            <ResponsiveContainer width="100%" height={280}>
+                            <ResponsiveContainer width="100%" height="100%">
                                 <BarChart
                                     data={chartData}
                                     margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
@@ -363,19 +393,20 @@ export default function Laporan() {
                                     />
                                     <YAxis 
                                         tick={{ fontSize: 12, fill: '#64748b' }}
-                                        label={{ value: 'Quantity (unit)', angle: -90, position: 'insideLeft' }}
+                                        label={{ value: 'Nilai Distribusi (Rp)', angle: -90, position: 'insideLeft', style: { fill: '#64748b', fontWeight: 'bold' } }}
                                     />
                                     <Tooltip 
                                         contentStyle={{
                                             backgroundColor: '#fff',
                                             border: '1px solid #e2e8f0',
-                                            borderRadius: '8px',
-                                            padding: '12px'
+                                            borderRadius: '12px',
+                                            padding: '12px',
+                                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
                                         }}
-                                        formatter={(value) => [value, 'Total Unit']}
-                                        labelStyle={{ color: '#1e293b' }}
+                                        formatter={(value) => [formatCurrency(value as number), 'Nilai Distribusi']}
+                                        labelStyle={{ color: '#1e293b', fontWeight: 'bold', marginBottom: '4px' }}
                                     />
-                                    <Bar dataKey="total" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                                    <Bar dataKey="total" fill="#3b82f6" radius={[10, 10, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -388,43 +419,61 @@ export default function Laporan() {
                     )}
                 </div>
 
-                {/* Monthly Record Table */}
-                <div className="lg:col-span-3 bg-white rounded-4xl p-6 border border-gray-100 shadow-sm flex flex-col">
-                    <h2 className="text-xl font-extrabold text-blue-950 mb-2">Rekapitulasi per Pemilik</h2>
-                    <p className="text-sm font-medium text-gray-500 mb-6">Akumulasi jumlah distribusi per pemilik UMKM dan siklus waktu kalender.</p>
-
-                    <div className="mb-4">
-                        <select
-                            className="w-full md:w-72 px-4 py-3 text-sm font-semibold text-gray-700 bg-gray-50/80 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-600/20 transition-all cursor-pointer"
-                            value={filterOwner}
-                            onChange={(e) => setFilterOwner(e.target.value)}
-                        >
-                            <option value="">Filter: Semua Pemilik UMKM</option>
-                            {Array.from(new Set(activeUmkms.map(u => u.owner))).map(owner => (
-                                <option key={owner} value={owner}>{owner}</option>
-                            ))}
-                        </select>
+                {/* Monthly Record Table (Moved here and made full width) */}
+                <div className="bg-white rounded-4xl p-8 border border-gray-100 shadow-sm flex flex-col">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                        <div>
+                            <h2 className="text-xl font-extrabold text-blue-950 mb-2">Rekapitulasi per Pemilik</h2>
+                            <p className="text-sm font-medium text-gray-500">Akumulasi jumlah distribusi per pemilik UMKM dan siklus waktu kalender.</p>
+                        </div>
+                        <div className="shrink-0">
+                            <select
+                                className="w-full md:w-72 px-4 py-3 text-sm font-semibold text-gray-700 bg-gray-50/80 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-600/20 transition-all cursor-pointer"
+                                value={filterOwner}
+                                onChange={(e) => setFilterOwner(e.target.value)}
+                            >
+                                <option value="">Filter: Semua Pemilik UMKM</option>
+                                {Array.from(new Set(activeUmkms.map(u => u.owner))).map(owner => (
+                                    <option key={owner} value={owner}>{owner}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
-                    <div className="flex-1 overflow-x-auto ring-1 ring-gray-100 rounded-2xl">
+                    <div className="flex-1 overflow-x-auto ring-1 ring-gray-100 rounded-2xl shadow-sm">
                         <table className="w-full text-left whitespace-nowrap">
                             <thead>
-                                <tr className="bg-gray-50">
-                                    <th className="py-4 px-5 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Pemilik UMKM</th>
-                                    <th className="py-4 px-5 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Bulan & Tahun</th>
-                                    <th className="py-4 px-5 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Unit Masuk</th>
-                                    <th className="py-4 px-5 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Unit Terkirim</th>
-                                    <th className="py-4 px-5 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-right">Nilai Konversi</th>
+                                <tr className="bg-gray-50/50">
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Tanggal</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Pemilik UMKM</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Unit Masuk</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Unit Terkirim</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-right">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {monthlyData.map((data, index) => (
+                                {monthlyData.map((data: any, index) => (
                                     <tr key={index} className="hover:bg-blue-50/30 transition-colors">
-                                        <td className="py-4 px-5 text-sm font-bold text-blue-900">{data.owner}</td>
-                                        <td className="py-4 px-5 text-sm font-bold text-gray-800">{data.month}</td>
-                                        <td className="py-4 px-5 text-sm font-extrabold text-blue-600 text-center">{data.masuk}</td>
-                                        <td className="py-4 px-5 text-sm font-extrabold text-green-600 text-center">{data.keluar}</td>
-                                        <td className="py-4 px-5 text-sm font-bold text-blue-950 text-right">{data.value}</td>
+                                        <td className="py-5 px-6 text-sm font-bold text-gray-800">{data.tanggal || data.month}</td>
+                                        <td className="py-5 px-6 text-sm font-bold text-blue-900">{data.owner}</td>
+                                        <td className="py-5 px-6 text-sm font-extrabold text-blue-600 text-center">{data.masuk}</td>
+                                        <td className="py-5 px-6 text-sm font-extrabold text-green-600 text-center">{data.keluar}</td>
+                                        <td className="py-5 px-6 text-right">
+                                            <button 
+                                                onClick={() => {
+                                                    setSelectedDetailData(data);
+                                                    setIsDetailModalOpen(true);
+                                                }}
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white font-bold rounded-xl transition-all text-xs border border-blue-100 hover:border-blue-600 shadow-sm"
+                                            >
+                                                <Eye size={14} /> Detail
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {monthlyData.length === 0 || (monthlyData[0].owner === "-" && (
+                                    <tr>
+                                        <td colSpan={5} className="py-12 text-center text-gray-400 italic">Belum ada data rekapitulasi tersedia.</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -433,61 +482,7 @@ export default function Laporan() {
                 </div>
             </div>
 
-            {/* Detailed Report Table */}
-            <div className="bg-white rounded-4xl border border-gray-100 shadow-sm overflow-hidden p-2">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-6 border-b border-gray-50">
-                    <div>
-                        <h2 className="text-xl font-extrabold text-blue-950">Jurnal Distribusi Global</h2>
-                        <div className="flex items-center gap-3 mt-1">
-                            <span className="text-sm font-medium text-gray-500">Mencatat 8 aktivitas terbaru secara real-time.</span>
-                            {isRefreshing && <div className="w-3 h-3 border-2 border-gray-200 border-t-amber-500 rounded-full animate-spin"></div>}
-                        </div>
-                    </div>
-                </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left whitespace-nowrap">
-                        <thead>
-                            <tr className="bg-gray-50/50">
-                                <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Tanggal</th>
-                                <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Eksekutor (UMKM)</th>
-                                <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Detail Produk & Kuantitas</th>
-                                <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Instansi Tujuan</th>
-                                <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Status</th>
-                                <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-right">Nilai Transaksi</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {reportData.map((row, index) => (
-                                <tr key={index} className="hover:bg-blue-50/40 transition-colors">
-                                    <td className="py-4 px-6 text-sm font-bold text-gray-500">{row.date}</td>
-                                    <td className="py-4 px-6 text-sm font-extrabold text-blue-900">{row.umkm}</td>
-                                    <td className="py-4 px-6">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-bold text-gray-800">{row.product}</span>
-                                            <span className="text-[10px] font-extrabold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{row.qty} pcs</span>
-                                        </div>
-                                    </td>
-                                    <td className="py-4 px-6 text-sm font-semibold text-gray-600">{row.destination}</td>
-                                    <td className="py-4 px-6">{statusBadge(row.rawStatus || "", row.status)}</td>
-                                    <td className="py-4 px-6 text-sm font-extrabold text-blue-950 text-right">{row.value}</td>
-                                </tr>
-                            ))}
-                            {reportData[0]?.date === "-" && (
-                                <tr>
-                                    <td colSpan={6} className="py-16 text-center text-gray-500">
-                                        <div className="flex flex-col items-center justify-center">
-                                            <PackageOpen size={40} className="text-gray-300 mb-4" />
-                                            <p className="font-bold text-gray-700">Laporan Kosong</p>
-                                            <p className="text-sm mt-1">Belum ada aktivitas distribusi yang tercatat.</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
 
             {/* Set Period Modal */}
             {showPeriodModal && (
@@ -532,6 +527,74 @@ export default function Laporan() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Detail Modal */}
+            {isDetailModalOpen && selectedDetailData && (
+                <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Rincian Distribusi Produk">
+                    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-blue-400 mb-1">Pemilik UMKM</p>
+                                    <p className="text-lg font-extrabold text-blue-950">{selectedDetailData.owner}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-blue-400 mb-1">Tanggal Distribusi</p>
+                                    <p className="text-lg font-extrabold text-blue-950">{selectedDetailData.tanggal}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-sm font-extrabold text-gray-800 mb-4 flex items-center gap-2">
+                                <Package size={18} className="text-blue-500" />
+                                Daftar Produk yang Dititipkan
+                            </h3>
+                            <div className="space-y-3">
+                                {selectedDetailData.items.map((item: any, idx: number) => (
+                                    <div key={idx} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:border-blue-200 transition-all">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <p className="font-extrabold text-gray-900">{item.product?.name || 'Produk Unknown'}</p>
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Tujuan: {item.company}</p>
+                                            </div>
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                                item.status === 'active' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                                            }`}>
+                                                {item.status === 'active' ? 'Masuk' : 'Selesai'}
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-50">
+                                            <div>
+                                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Stok Katalog</p>
+                                                <p className="text-sm font-extrabold text-blue-950">{item.product?.quantity || 0} unit</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Harga</p>
+                                                <p className="text-sm font-extrabold text-blue-950">Rp {Number(item.product?.price || 0).toLocaleString('id-ID')}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Total Nilai</p>
+                                                <p className="text-sm font-extrabold text-blue-700">Rp {(Number(item.product?.quantity || 0) * Number(item.product?.price || 0)).toLocaleString('id-ID')}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="pt-6 border-t border-gray-100 flex justify-between items-center">
+                            <div>
+                                <p className="text-xs font-bold text-gray-500 uppercase">Total Akumulasi Nilai</p>
+                                <p className="text-2xl font-black text-blue-900">{selectedDetailData.value}</p>
+                            </div>
+                            <button onClick={() => setIsDetailModalOpen(false)} className="px-6 py-3 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-black transition-all shadow-lg">
+                                Tutup Rincian
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
             )}
         </div>
     );

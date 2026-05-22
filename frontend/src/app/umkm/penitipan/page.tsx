@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { ClipboardList, MapPin, ChevronRight, CheckCircle2, Clock, XCircle, AlertCircle } from "lucide-react";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
+import FloatingWhatsAppButton from "@/components/FloatingWhatsAppButton";
 
 export default function PenitipanUMKM() {
   const [consignments, setConsignments] = useState<any[]>([]);
@@ -177,6 +178,9 @@ export default function PenitipanUMKM() {
           )}
         </div>
       )}
+      
+      {/* Floating WhatsApp Button */}
+      <FloatingWhatsAppButton />
     </div>
   );
 }

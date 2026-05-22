@@ -21,6 +21,7 @@ export default function DataPenitipan() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editItem, setEditItem] = useState<any>(null);
+    const [selectedProductInfo, setSelectedProductInfo] = useState<{ price: number | null; quantity: number | null }>({ price: null, quantity: null });
     const [formData, setFormData] = useState({
         company: '',
         product_id: '',
@@ -78,8 +79,10 @@ export default function DataPenitipan() {
     const handleAdd = () => {
         setFormData({
             company: '', product_id: '', umkm_id: '',
-            quantity: 0, duration_days: 30, start_date: new Date().toISOString().split('T')[0], status: 'active'
+            quantity: 0,
+            duration_days: 30, start_date: new Date().toISOString().split('T')[0], status: 'active'
         });
+        setSelectedProductInfo({ price: null, quantity: null });
         setIsModalOpen(true);
     };
 
@@ -98,7 +101,6 @@ export default function DataPenitipan() {
         try {
             const payload = {
                 company: editItem.company,
-                quantity: editItem.quantity,
                 duration_days: editItem.duration_days,
                 start_date: editItem.start_date,
                 status: editItem.status
@@ -141,14 +143,19 @@ export default function DataPenitipan() {
         }
     };
 
-    // Auto-select UMKM based on Product
+    // Auto-select UMKM based on Product + auto-fill harga & stok
     const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const prodId = e.target.value;
         const selectedProd = products.find(p => p.id.toString() === prodId);
         setFormData({
             ...formData,
             product_id: prodId,
-            umkm_id: selectedProd ? selectedProd.umkm_id.toString() : ''
+            umkm_id: selectedProd ? selectedProd.umkm_id.toString() : '',
+            quantity: selectedProd ? selectedProd.quantity : 0
+        });
+        setSelectedProductInfo({
+            price: selectedProd ? selectedProd.price : null,
+            quantity: selectedProd ? selectedProd.quantity : null
         });
     };
 
@@ -211,9 +218,10 @@ export default function DataPenitipan() {
                             <thead>
                                 <tr className="bg-gray-50/80">
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Flow ID / Mitra</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Alokasi & Tujuan</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Kuantitas</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Siklus</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Alokasi Tujuan</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Nama Produk</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Harga</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Stok</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Kondisi Status</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-right">Opsi</th>
                                 </tr>
@@ -228,31 +236,37 @@ export default function DataPenitipan() {
                                             </div>
                                         </td>
                                         <td className="py-5 px-6">
-                                            <div className="flex flex-col gap-1.5">
-                                                <div className="flex items-center gap-2">
-                                                    <Building2 size={14} className="text-blue-400" />
-                                                    <span className="text-sm font-extrabold text-gray-800">{item.company || '-'}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Package size={14} className="text-gray-400" />
-                                                    <span className="text-xs font-semibold text-gray-600">{item.product?.name || 'Produk Unknown'}</span>
-                                                </div>
+                                            <div className="flex items-center gap-2">
+                                                <Building2 size={14} className="text-blue-400" />
+                                                <span className="text-sm font-extrabold text-gray-800">{item.company || '-'}</span>
                                             </div>
                                         </td>
                                         <td className="py-5 px-6">
-                                            <div className="inline-flex items-end text-blue-700">
-                                                <span className="text-lg font-extrabold leading-none">{item.quantity}</span>
-                                                <span className="text-[10px] font-bold ml-1 mb-0.5 uppercase tracking-widest text-blue-400">Unit</span>
+                                            <div className="flex items-center gap-2">
+                                                <Package size={14} className="text-gray-400" />
+                                                <span className="text-sm font-semibold text-gray-700">{item.product?.name || 'Produk Unknown'}</span>
                                             </div>
                                         </td>
                                         <td className="py-5 px-6">
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-semibold text-gray-700">{new Date(item.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">({item.duration_days} Hari)</span>
-                                            </div>
+                                            {item.product?.price != null ? (
+                                                <span className="text-sm font-extrabold text-blue-950 bg-blue-50/50 px-2.5 py-1 rounded-lg border border-blue-100">
+                                                    Rp {Number(item.product.price).toLocaleString('id-ID')}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">—</span>
+                                            )}
                                         </td>
                                         <td className="py-5 px-6">
-                                            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${item.status === 'active' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                            {item.product?.quantity != null ? (
+                                                <span className="text-sm font-extrabold text-blue-950 bg-blue-50/50 px-2.5 py-1 rounded-lg border border-blue-100">
+                                                    {item.product.quantity} unit
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">—</span>
+                                            )}
+                                        </td>
+                                        <td className="py-5 px-6">
+                                            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${item.status === 'active' ? 'bg-blue-100 text-blue-700 border-blue-200' :
                                                 item.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
                                                     'bg-red-50 text-red-700 border-red-200'
                                                 }`}>
@@ -260,7 +274,7 @@ export default function DataPenitipan() {
                                                 {item.status === 'completed' && <CheckCircle2 size={12} className="shrink-0" />}
                                                 {item.status === 'cancelled' && <XCircle size={12} className="shrink-0" />}
                                                 <span className="text-[10px] font-bold uppercase tracking-wider">
-                                                    {item.status === "active" ? "Bergerak" : item.status === "completed" ? "Selesai" : "Retur"}
+                                                    {item.status === "active" ? "Masuk" : item.status === "completed" ? "Keluar" : "Retur"}
                                                 </span>
                                             </div>
                                         </td>
@@ -286,7 +300,7 @@ export default function DataPenitipan() {
                                 ))}
                                 {filteredData.length === 0 && !loading && (
                                     <tr>
-                                        <td colSpan={6} className="py-20 text-center">
+                                        <td colSpan={7} className="py-20 text-center">
                                             <div className="flex flex-col items-center">
                                                 <ClipboardList size={40} className="text-gray-200 mb-4" />
                                                 <p className="font-extrabold text-gray-500">Tidak Log Penitipan</p>
@@ -318,6 +332,34 @@ export default function DataPenitipan() {
                             ))}
                         </select>
                     </div>
+
+                    {/* Info Produk: Harga & Stok — auto-fill saat produk dipilih */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Harga Produk</label>
+                            <div className={`w-full px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${selectedProductInfo.price !== null
+                                    ? 'bg-gray-50 border-gray-200 text-gray-800'
+                                    : 'bg-gray-50 border-gray-100 text-gray-400'
+                                }`}>
+                                {selectedProductInfo.price !== null
+                                    ? `Rp ${Number(selectedProductInfo.price).toLocaleString('id-ID')}`
+                                    : '— Belum dipilih —'}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Stok</label>
+                            <div className={`w-full px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${formData.quantity > 0
+                                    ? 'bg-gray-50 border-gray-200 text-gray-800'
+                                    : 'bg-gray-50 border-gray-100 text-gray-400'
+                                }`}>
+                                {formData.quantity > 0
+                                    ? `${formData.quantity} unit`
+                                    : '— Belum dipilih —'}
+                            </div>
+                            <p className="text-[10px] mt-1 text-gray-400 font-medium italic">* Mengambil seluruh stok tersedia dari katalog</p>
+                        </div>
+                    </div>
+
                     <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Tujuan Distribusi (Instansi / Hotel)</label>
                         <input
@@ -328,28 +370,6 @@ export default function DataPenitipan() {
                             onChange={e => setFormData({ ...formData, company: e.target.value })}
                             placeholder="Contoh: Hotel Nagoya Batam..."
                         />
-                    </div>
-                    <div className="grid grid-cols-2 gap-5">
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Jumlah Unit (Pcs)</label>
-                            <input
-                                type="number"
-                                required min="1"
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm font-semibold text-gray-800"
-                                value={formData.quantity}
-                                onChange={e => setFormData({ ...formData, quantity: Number(e.target.value) })}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Batas Hari</label>
-                            <input
-                                type="number"
-                                required min="1"
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm font-semibold text-gray-800"
-                                value={formData.duration_days}
-                                onChange={e => setFormData({ ...formData, duration_days: Number(e.target.value) })}
-                            />
-                        </div>
                     </div>
                     <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Tanggal Berangkat</label>
@@ -389,42 +409,10 @@ export default function DataPenitipan() {
                                 value={editItem.status}
                                 onChange={(e) => setEditItem({ ...editItem, status: e.target.value })}
                             >
-                                <option value="active">Bergerak Aktif</option>
-                                <option value="completed">Selesai Berhasil</option>
+                                <option value="active">Masuk</option>
+                                <option value="completed">Keluar</option>
                                 <option value="cancelled">Di-Retur / Batal</option>
                             </select>
-                        </div>
-                        <div className="grid grid-cols-2 gap-5">
-                            <div>
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Revisi Jumlah (Pcs)</label>
-                                <input
-                                    type="number"
-                                    required min="1"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm font-semibold text-gray-800"
-                                    value={editItem.quantity}
-                                    onChange={e => setEditItem({ ...editItem, quantity: Number(e.target.value) })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Kontrak (Hari)</label>
-                                <input
-                                    type="number"
-                                    required min="1"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm font-semibold text-gray-800"
-                                    value={editItem.duration_days}
-                                    onChange={e => setEditItem({ ...editItem, duration_days: Number(e.target.value) })}
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Update Tanggal</label>
-                            <input
-                                type="date"
-                                required
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm font-semibold text-gray-800"
-                                value={editItem.start_date}
-                                onChange={e => setEditItem({ ...editItem, start_date: e.target.value })}
-                            />
                         </div>
                         <div className="flex justify-end pt-5 space-x-3 border-t border-gray-100 mt-6">
                             <button type="button" className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors" onClick={() => setIsEditModalOpen(false)}>Batalkan</button>

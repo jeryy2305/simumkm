@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Search, Package, AlertCircle } from "lucide-react";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
+import FloatingWhatsAppButton from "@/components/FloatingWhatsAppButton";
 
 export default function ProdukUMKM() {
   const [products, setProducts] = useState<any[]>([]);
@@ -174,6 +175,9 @@ export default function ProdukUMKM() {
             )}
         </div>
       )}
+
+      {/* Floating WhatsApp Button */}
+      <FloatingWhatsAppButton />
     </div>
   );
 }
