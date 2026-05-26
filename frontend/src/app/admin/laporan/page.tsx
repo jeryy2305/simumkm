@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, Download, TrendingUp, BarChart3, Package, Users, PackageOpen } from "lucide-react";
+import { Calendar, Download, TrendingUp, BarChart3, Package, Users } from "lucide-react";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Modal } from "@/components/Modal";
 import { Eye } from "lucide-react";
 
@@ -16,10 +15,6 @@ const initialSummaryData = [
 
 const initialMonthlyData = [
     { owner: "-", tanggal: "-", masuk: 0, keluar: 0, value: "Rp 0" },
-];
-
-const initialReportData = [
-    { date: "-", umkm: "-", product: "-", qty: 0, destination: "-", status: "-", value: "Rp 0", rawStatus: "-" },
 ];
 
 function formatCurrency(value: number) {
@@ -41,25 +36,11 @@ function formatDate(dateString?: string) {
     }
 }
 
-function toMonthKey(dateString: string) {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "0000-00";
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function toMonthLabel(dateString: string) {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "-";
-    return date.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
-}
-
 export default function Laporan() {
     const [allData, setAllData] = useState<any[]>([]);
     const [activeUmkms, setActiveUmkms] = useState<any[]>([]);
     const [summaryData, setSummaryData] = useState(initialSummaryData);
     const [monthlyData, setMonthlyData] = useState(initialMonthlyData);
-    const [reportData, setReportData] = useState(initialReportData);
-    const [chartData, setChartData] = useState<any[]>([]);
     const [showPeriodModal, setShowPeriodModal] = useState(false);
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
@@ -152,44 +133,6 @@ export default function Laporan() {
 
         setMonthlyData(dailyRows.length > 0 ? dailyRows : initialMonthlyData);
 
-        const sortedReport = filtered
-            .slice()
-            .sort((a: any, b: any) => new Date(b.created_at || b.start_date).getTime() - new Date(a.created_at || a.start_date).getTime())
-            .slice(0, 8)
-            .map((item: any) => ({
-                date: formatDate(item.created_at || item.start_date),
-                umkm: item.umkm?.name || item.umkm?.owner || "-",
-                product: item.product?.name || "-",
-                qty: Number(item.product?.quantity || 0),
-                destination: item.company || item.location || "-",
-                status: item.status === "active" ? "MASUK" : item.status === "completed" ? "KELUAR" : "DIBATALKAN",
-                rawStatus: item.status,
-                value: formatCurrency(Number(item.product?.quantity || 0) * Number(item.product?.price || 0)),
-            }));
-
-        setReportData(sortedReport.length > 0 ? sortedReport : initialReportData);
-
-        // Prepare chart data - group by month
-        const chartMap = new Map<string, { month: string; total: number; monthKey: string }>();
-        filtered.forEach((item: any) => {
-            const dateKey = toMonthKey(item.created_at || item.start_date || "");
-            const monthLabel = toMonthLabel(item.created_at || item.start_date || "");
-            
-            if (!monthLabel || monthLabel === "-") return;
-
-            const existing = chartMap.get(dateKey) ?? { month: monthLabel, total: 0, monthKey: dateKey };
-            existing.total += Number(item.product?.quantity || 0) * Number(item.product?.price || 0);
-            chartMap.set(dateKey, existing);
-        });
-
-        const chartRows = Array.from(chartMap.values())
-            .sort((a, b) => a.monthKey.localeCompare(b.monthKey))
-            .map(({ month, total }) => ({
-                month,
-                total,
-            }));
-
-        setChartData(chartRows.length > 0 ? chartRows : []);
     };
 
     const applyFilter = () => {
@@ -322,12 +265,6 @@ export default function Laporan() {
         }
     }, [filterOwner]);
 
-    const statusBadge = (rawStatus: string, label: string) => {
-        if (rawStatus === "active") return <span className="inline-flex px-3 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-wider rounded-md border border-blue-200">↻ {label}</span>;
-        if (rawStatus === "completed") return <span className="inline-flex px-3 py-1 bg-green-100 text-green-700 text-[10px] font-bold uppercase tracking-wider rounded-md border border-green-200">✓ {label}</span>;
-        return <span className="inline-flex px-3 py-1 bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider rounded-md border border-red-200">✕ {label}</span>;
-    };
-
     return (
         <div className="space-y-8 md:pb-24 font-sans text-gray-800">
             {/* Header */}
@@ -371,55 +308,6 @@ export default function Laporan() {
             </div>
 
             <div className="grid grid-cols-1 gap-8">
-                {/* Chart */}
-                <div className="bg-white rounded-4xl p-8 border border-gray-100 shadow-sm flex flex-col h-[450px]">
-                    <h2 className="text-xl font-extrabold text-blue-950 mb-2">Grafik Performa Bulanan</h2>
-                    <p className="text-sm font-medium text-gray-500 mb-6">Total nilai distribusi produk per bulan</p>
-
-                    {chartData.length > 0 ? (
-                        <div className="flex-1 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart
-                                    data={chartData}
-                                    margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
-                                >
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                                    <XAxis 
-                                        dataKey="month" 
-                                        tick={{ fontSize: 12, fill: '#64748b' }}
-                                        angle={-45}
-                                        textAnchor="end"
-                                        height={80}
-                                    />
-                                    <YAxis 
-                                        tick={{ fontSize: 12, fill: '#64748b' }}
-                                        label={{ value: 'Nilai Distribusi (Rp)', angle: -90, position: 'insideLeft', style: { fill: '#64748b', fontWeight: 'bold' } }}
-                                    />
-                                    <Tooltip 
-                                        contentStyle={{
-                                            backgroundColor: '#fff',
-                                            border: '1px solid #e2e8f0',
-                                            borderRadius: '12px',
-                                            padding: '12px',
-                                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                                        }}
-                                        formatter={(value) => [formatCurrency(value as number), 'Nilai Distribusi']}
-                                        labelStyle={{ color: '#1e293b', fontWeight: 'bold', marginBottom: '4px' }}
-                                    />
-                                    <Bar dataKey="total" fill="#3b82f6" radius={[10, 10, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50 relative">
-                            <BarChart3 size={48} className="mb-4 text-gray-300" />
-                            <p className="font-bold text-gray-600 tracking-wider">Tidak Ada Data</p>
-                            <p className="text-xs text-gray-400 mt-2 max-w-50 text-center">Silahkan sesuaikan filter periode dan pemilik UMKM untuk melihat grafik.</p>
-                        </div>
-                    )}
-                </div>
-
-                {/* Monthly Record Table (Moved here and made full width) */}
                 <div className="bg-white rounded-4xl p-8 border border-gray-100 shadow-sm flex flex-col">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                         <div>

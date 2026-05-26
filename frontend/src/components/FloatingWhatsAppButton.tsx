@@ -7,6 +7,7 @@ export default function FloatingWhatsAppButton() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [moved, setMoved] = useState(false);
+  const BUTTON_SIZE = 64; // px, matches w-16 h-16
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
@@ -32,10 +33,60 @@ export default function FloatingWhatsAppButton() {
       setMoved(true);
     }
 
-    setPosition({
-      x: newX,
-      y: newY,
+    setPosition(({ x: _prevX, y: _prevY }) => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const minX = -vw + 48;
+      const maxX = vw - 48;
+      const minY = -vh + 48;
+      const maxY = vh - 48;
+      return {
+        x: Math.max(minX, Math.min(maxX, newX)),
+        y: Math.max(minY, Math.min(maxY, newY)),
+      };
     });
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    setIsDragging(true);
+    setMoved(false);
+    setDragStart({ x: t.clientX - position.x, y: t.clientY - position.y });
+    e.preventDefault();
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (!isDragging) return;
+    const t = e.touches[0];
+    if (!t) return;
+
+    const newX = t.clientX - dragStart.x;
+    const newY = t.clientY - dragStart.y;
+
+    const deltaX = Math.abs(newX - position.x);
+    const deltaY = Math.abs(newY - position.y);
+    if (deltaX > 5 || deltaY > 5) setMoved(true);
+
+    setPosition(({ x: _prevX, y: _prevY }) => {
+      // clamp to viewport so button stays visible
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const minX = -vw + 48; // allow some offscreen margin
+      const maxX = vw - 48;
+      const minY = -vh + 48;
+      const maxY = vh - 48;
+      return {
+        x: Math.max(minX, Math.min(maxX, newX)),
+        y: Math.max(minY, Math.min(maxY, newY)),
+      };
+    });
+
+    // prevent page scroll while dragging
+    e.preventDefault();
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
   };
 
   const handleMouseUp = () => {
@@ -46,24 +97,79 @@ export default function FloatingWhatsAppButton() {
     if (isDragging) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
+      document.addEventListener("touchmove", handleTouchMove, { passive: false });
+      document.addEventListener("touchend", handleTouchEnd);
     } else {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleTouchEnd);
     }
 
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleTouchEnd);
     };
   }, [isDragging]);
 
+  // On mount, try to detect any fixed bottom navbar and position the button above it
+  useEffect(() => {
+    // don't override if user already moved the button
+    if (position.x !== 0 || position.y !== 0) return;
+
+    let offset = 0;
+    const selectors = ["nav", "[role=\"navigation\"]", ".navbar", "header"];
+    selectors.forEach((sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return;
+      const style = window.getComputedStyle(el);
+      if (style.position === "fixed") {
+        const rect = el.getBoundingClientRect();
+        // consider elements anchored to bottom
+        if (rect.bottom >= window.innerHeight - 1) {
+          offset = Math.max(offset, rect.height + Math.abs(parseFloat(style.bottom) || 0));
+        }
+      }
+    });
+
+    if (offset === 0) {
+      // fallback: scan for any fixed elements touching bottom
+      const all = Array.from(document.querySelectorAll("*"));
+      all.forEach((el) => {
+        const style = window.getComputedStyle(el as Element);
+        if (style.position === "fixed") {
+          const rect = (el as Element).getBoundingClientRect();
+          if (rect.bottom >= window.innerHeight - 4) {
+            offset = Math.max(offset, rect.height);
+          }
+        }
+      });
+    }
+
+    if (offset > 0) {
+      setPosition((p) => ({ ...p, y: -(offset + 12) }));
+    } else {
+      // Try safe-area inset fallback (iOS)
+      try {
+        const safeInset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom')) || 0;
+        if (safeInset > 0) setPosition((p) => ({ ...p, y: -(safeInset + 12) }));
+      } catch (err) {
+        // ignore
+      }
+    }
+  }, []);
+
   return (
     <div
-      className="fixed bottom-4 right-4 z-50 cursor-grab active:cursor-grabbing"
+      className="fixed bottom-4 right-4 z-50 cursor-grab active:cursor-grabbing touch-none"
       style={{
         transform: `translate(${position.x}px, ${position.y}px)`,
+        touchAction: 'none',
       }}
       onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
     >
       <a
         href="https://wa.me/628123456789?text=Halo%20saya%20ingin%20bertanya%20tentang%20UMKM%20Anda"
@@ -74,7 +180,7 @@ export default function FloatingWhatsAppButton() {
             e.preventDefault(); // cegah buka WA saat drag
           }
         }}
-        className="block w-16 h-16 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group"
+        className="w-16 h-16 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group"
       >
         <svg
           className="w-8 h-8 group-hover:scale-110 transition-transform duration-300"

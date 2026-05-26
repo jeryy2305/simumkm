@@ -79,7 +79,7 @@ export default function ProdukUMKM() {
   }
 
   return (
-    <div className="space-y-6 pb-24 font-sans text-gray-800">
+    <div className="space-y-6 pb-32 md:pb-24 font-sans text-gray-800">
       <div className="mb-6">
         <h2 className="text-2xl font-extrabold text-blue-950">Katalog Produk</h2>
         <p className="text-sm text-gray-500 mt-1">Kelola data seluruh produk UMKM Anda yang tersedia di sistem.</p>
@@ -122,26 +122,26 @@ export default function ProdukUMKM() {
         </div>
       ) : (
         /* Product List */
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-6">
           {products
             .filter((product) =>
               product.name?.toLowerCase().includes(searchTerm.toLowerCase())
             )
             .map((product) => (
-              <div key={product.id} className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-lg overflow-hidden flex flex-col group transition-all duration-300 hover:-translate-y-1">
-                <div className="p-4 flex-1 flex flex-col">
+              <div key={product.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg overflow-hidden flex flex-col group transition-all duration-300 hover:-translate-y-1">
+                <div className="p-3 md:p-4 flex-1 flex flex-col">
                   <h3 className="text-sm font-bold text-gray-900 line-clamp-2 leading-tight mb-3 group-hover:text-blue-800 transition-colors">{product.name}</h3>
                   
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Stok Tersedia</span>
+                      <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Stok</span>
                       <span className={`text-sm font-extrabold ${product.quantity > 10 ? 'text-green-600' : product.quantity > 0 ? 'text-amber-600' : 'text-gray-600'}`}>
                         {product.quantity} unit
                       </span>
                     </div>
                     
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</span>
+                      <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Status</span>
                       <span className={`inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
                         product.cancelled_quantity > 0
                           ? 'bg-red-100 text-red-700'
@@ -162,7 +162,7 @@ export default function ProdukUMKM() {
                     </div>
                   </div>
                   
-                  <p className="text-lg font-extrabold text-blue-700 mt-auto">Rp {Number(product.price).toLocaleString('id-ID')}</p>
+                  <p className="text-base md:text-lg font-extrabold text-blue-700 mt-auto">Rp {Number(product.price).toLocaleString('id-ID')}</p>
                 </div>
               </div>
             ))}

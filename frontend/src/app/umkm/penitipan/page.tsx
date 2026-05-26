@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ClipboardList, MapPin, ChevronRight, CheckCircle2, Clock, XCircle, AlertCircle } from "lucide-react";
+import { ClipboardList, MapPin, Package, ChevronRight, CheckCircle2, Clock, XCircle, AlertCircle } from "lucide-react";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
 import FloatingWhatsAppButton from "@/components/FloatingWhatsAppButton";
 
@@ -11,6 +11,8 @@ export default function PenitipanUMKM() {
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('active');
   const [umkmStatus, setUmkmStatus] = useState<string | null>(null);
+  const [currentUmkm, setCurrentUmkm] = useState<any>(null);
+  
 
   useEffect(() => {
     const fetchData = async () => {
@@ -19,6 +21,7 @@ export default function PenitipanUMKM() {
           const dashRes = await authFetch(`${API_URL}/api/umkm-user/dashboard`);
           if (dashRes.ok) {
             const dashData = await parseJson<any>(dashRes);
+            setCurrentUmkm(dashData.umkm ?? null);
             if (dashData?.umkm?.status === "inactive") {
               setUmkmStatus("inactive");
               setLoading(false);
@@ -111,7 +114,7 @@ export default function PenitipanUMKM() {
       {error && (
         <div className="p-8 max-w-xl mx-auto mt-4 text-center bg-white rounded-3xl border border-red-100 shadow-xl shadow-red-100/50">
           <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <XCircle className="text-red-500" size={32} />
+            <XCircle className="text-red-500" size="c32" />
           </div>
           <p className="font-bold text-xl text-gray-900 mb-2">Terjadi Kesalahan</p>
           <p className="text-gray-500 text-sm mb-2">{error}</p>
@@ -131,40 +134,40 @@ export default function PenitipanUMKM() {
         /* List */
         <div className="space-y-4">
           {filteredConsignments.map((item) => (
-            <div key={item.id} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm relative overflow-hidden transition-all hover:border-blue-100 hover:shadow-md active:scale-[0.98] group cursor-pointer">
-              <div className={`absolute top-0 left-0 w-1.5 h-full transition-colors ${item.status === 'active' ? 'bg-amber-400' : (item.status === 'completed' ? 'bg-green-500' : 'bg-red-500')}`}></div>
+            <div
+              key={item.id}
+              className="group relative overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg"
+            >
+              <div className={`absolute inset-y-0 left-0 w-1.5 rounded-r-full transition-colors ${item.status === 'active' ? 'bg-amber-400' : item.status === 'completed' ? 'bg-green-500' : 'bg-red-500'}`}></div>
 
-              <div className="flex justify-between items-start mb-4 pl-2">
-                <div>
-                  <span className="text-[10px] font-bold text-blue-800 bg-blue-100 px-2.5 py-1 rounded-full w-max mb-2 uppercase tracking-widest flex items-center gap-1">
-                    trx-{item.id}
-                  </span>
-                  <h3 className="font-extrabold text-gray-900 text-base md:text-lg group-hover:text-blue-900 transition-colors">{item.company}</h3>
-                </div>
-                <div className="text-right">
-                  <p className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1 justify-end ${item.status === 'active' ? 'text-amber-600' : (item.status === 'completed' ? 'text-green-600' : 'text-red-600')}`}>
-                    {item.status === 'active' && <Clock size={12} />}
-                    {item.status === 'completed' && <CheckCircle2 size={12} />}
-                    {item.status === 'cancelled' && <XCircle size={12} />}
-                    {item.status === 'active' ? 'Bergerak' : (item.status === 'completed' ? 'Tuntas' : 'Retur')}
-                  </p>
-                  <p className="text-[10px] font-medium text-gray-400 mt-1 uppercase tracking-widest">{new Date(item.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-3 bg-gray-50/80 p-4 rounded-xl border border-gray-100 group-hover:bg-blue-50/30 transition-colors ml-2">
-                <div className="flex items-center gap-3 text-xs md:text-sm text-gray-600 font-medium">
-                  <MapPin size={16} className="text-blue-400 shrink-0" />
-                  <span className="truncate">{item.company}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 text-xs md:text-sm text-gray-600 font-medium">
-                    <ClipboardList size={16} className="text-amber-500 shrink-0" />
-                    <span><strong className="text-blue-950">{item.quantity}</strong> unit {item.product?.name || 'Produk'} dititipkan</span>
+              <div className="flex flex-col gap-3 pl-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 space-y-2">
+                    <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-700">trx-{item.id}</span>
+                    <div className="flex items-center gap-2 text-slate-900 sm:text-lg">
+                      <MapPin size={16} className="text-blue-400 shrink-0" />
+                      <h3 className="truncate text-base font-semibold text-slate-900 sm:text-lg">{item.company}</h3>
+                    </div>
                   </div>
-                  <button className="text-blue-600 bg-blue-100 p-1.5 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                    <ChevronRight size={16} />
-                  </button>
+                  <div className="flex flex-col items-start gap-1 text-right sm:items-end">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.24em] ${item.status === 'active' ? 'bg-amber-100 text-amber-700' : item.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {item.status === 'active' ? 'Dalam Penyaluran' : item.status === 'completed' ? 'Tuntas' : 'Retur'}
+                    </span>
+                    <span className="text-[11px] text-slate-500 uppercase tracking-[0.24em]">{new Date(item.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-slate-50/90 p-3 md:p-4 text-sm text-slate-700 shadow-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-center gap-2 truncate text-slate-700">
+                      <Package size={16} className="text-slate-500 shrink-0" />
+                      <span className="truncate font-medium">{item.product?.name || 'Produk tidak diketahui'}</span>
+                    </div>
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200">
+                      <ClipboardList size={14} className="text-amber-500" />
+                      <span>{item.quantity} unit</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -179,6 +182,8 @@ export default function PenitipanUMKM() {
         </div>
       )}
       
+      {/* detail modal removed - cards now non-interactive */}
+
       {/* Floating WhatsApp Button */}
       <FloatingWhatsAppButton />
     </div>
