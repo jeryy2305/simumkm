@@ -130,12 +130,15 @@
         /* MAIN TABLE */
         .data-table { 
             width: 100%; 
-            border-collapse: separate; 
-            border-spacing: 0;
+            border-collapse: collapse; 
             margin-top: 10px;
             border-radius: 12px;
             overflow: hidden;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #cbd5e1;
+        }
+
+        .data-table th, .data-table td { 
+            border: 1px solid #cbd5e1;
         }
 
         .data-table th { 
@@ -152,7 +155,6 @@
         .data-table td { 
             padding: 12px; 
             font-size: 11px;
-            border-bottom: 1px solid #f1f5f9;
             color: #334155;
         }
 
@@ -256,30 +258,57 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th width="20%">TANGGAL</th>
-                    <th width="30%">PEMILIK UMKM</th>
-                    <th width="15%" class="text-center">UNIT MASUK</th>
-                    <th width="15%" class="text-center">UNIT KELUAR</th>
-                    <th width="20%" class="text-right">NILAI KONVERSI</th>
+                    <th width="15%">TANGGAL</th>
+                    <th width="25%">PEMILIK UMKM</th>
+                    <th width="25%">NAMA PRODUK</th>
+                    <th width="10%" class="text-center">STOK</th>
+                    <th width="12%" class="text-center">HARGA / UNIT</th>
+                    <th width="13%" class="text-right">TOTAL HARGA</th>
                 </tr>
             </thead>
             <tbody>
                 <?php $__empty_1 = true; $__currentLoopData = $monthlyData; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $row): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                <tr>
-                    <td class="font-bold"><?php echo e($row['date']); ?></td>
-                    <td class="font-bold text-blue"><?php echo e($row['owner']); ?></td>
-                    <td class="text-center"><?php echo e(number_format($row['masuk'], 0, ',', '.')); ?></td>
-                    <td class="text-center text-green font-bold"><?php echo e(number_format($row['keluar'], 0, ',', '.')); ?></td>
-                    <td class="text-right font-bold">Rp <?php echo e(number_format($row['value'], 0, ',', '.')); ?></td>
-                </tr>
+                    <?php
+                        $items = $row['items'] ?? [];
+                        $itemCount = count($items);
+                    ?>
+                    <?php if($itemCount > 0): ?>
+                        <?php $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $index => $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <tr>
+                                <?php if($index === 0): ?>
+                                    <td rowSpan="<?php echo e($itemCount); ?>" class="font-bold"><?php echo e($row['date']); ?></td>
+                                    <td rowSpan="<?php echo e($itemCount); ?>" class="font-bold text-blue"><?php echo e($row['owner']); ?></td>
+                                <?php endif; ?>
+                                <td><?php echo e($item['name']); ?></td>
+                                <td class="text-center"><?php echo e(number_format($item['quantity'], 0, ',', '.')); ?></td>
+                                <td class="text-center">Rp <?php echo e(number_format($item['price'], 0, ',', '.')); ?></td>
+                                <?php if($index === 0): ?>
+                                    <td rowSpan="<?php echo e($itemCount); ?>" class="text-right font-bold">Rp <?php echo e(number_format($row['value'], 0, ',', '.')); ?></td>
+                                <?php endif; ?>
+                            </tr>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    <?php else: ?>
+                        <tr>
+                            <td class="font-bold"><?php echo e($row['date']); ?></td>
+                            <td class="font-bold text-blue"><?php echo e($row['owner']); ?></td>
+                            <td colspan="3" class="text-center">-</td>
+                            <td class="text-right font-bold">Rp <?php echo e(number_format($row['value'], 0, ',', '.')); ?></td>
+                        </tr>
+                    <?php endif; ?>
                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                 <tr>
-                    <td colspan="5" class="text-center" style="padding: 40px; color: #94a3b8;">
+                    <td colspan="6" class="text-center" style="padding: 40px; color: #94a3b8;">
                         Belum ada rekaman distribusi untuk periode ini.
                     </td>
                 </tr>
                 <?php endif; ?>
             </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="5" class="text-left font-bold" style="padding: 14px 12px; background: #f8fafc;">TOTAL AKUMULASI NILAI</td>
+                    <td class="text-right font-bold" style="padding: 14px 12px; background: #f8fafc;">Rp <?php echo e(number_format($totalValue, 0, ',', '.')); ?></td>
+                </tr>
+            </tfoot>
         </table>
 
         <!-- SIGNATURE -->

@@ -84,8 +84,16 @@ class LaporanController extends Controller
                     'masuk' => 0,
                     'keluar' => 0,
                     'value' => 0,
+                    'items' => [],
                 ];
             }
+
+            $data[$compositeKey]['items'][] = [
+                'name' => $consignment->product?->name ?? 'Produk Unknown',
+                'quantity' => $consignment->product?->quantity ?? 0,
+                'price' => $consignment->product?->price ?? 0,
+                'status' => $consignment->status,
+            ];
 
             if ($consignment->status === 'active') {
                 $data[$compositeKey]['masuk'] += $consignment->product ? $consignment->product->quantity : 0;
