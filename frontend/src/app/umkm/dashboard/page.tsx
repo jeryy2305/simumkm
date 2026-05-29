@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Package, ClipboardList, CheckCircle2, Bell, Zap, ShieldAlert, AlertCircle, Building2 } from "lucide-react";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
+import FloatingWhatsAppButton from "@/components/FloatingWhatsAppButton";
 
 interface DashboardActivity {
   id: string;
@@ -246,6 +247,9 @@ export default function DashboardUMKM() {
           </div>
         </section>
       </div>
+
+      {/* Floating WhatsApp Button */}
+      <FloatingWhatsAppButton />
     </div>
   );
 }

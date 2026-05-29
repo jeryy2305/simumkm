@@ -13,8 +13,18 @@ const initialSummaryData = [
     { label: "UMKM Aktif", value: "0", icon: Users, color: "text-indigo-500", bg: "bg-indigo-100" },
 ];
 
-const initialMonthlyData = [
-    { owner: "-", tanggal: "-", masuk: 0, keluar: 0, value: "Rp 0" },
+type MonthlyRow = {
+    owner: string;
+    tanggal: string;
+    masuk: number;
+    keluar: number;
+    value: string;
+    totalRawValue: number;
+    items: any[];
+};
+
+const initialMonthlyData: MonthlyRow[] = [
+    { owner: "-", tanggal: "-", masuk: 0, keluar: 0, value: "Rp 0", totalRawValue: 0, items: [] as any[] },
 ];
 
 function formatCurrency(value: number) {
@@ -40,7 +50,7 @@ export default function Laporan() {
     const [allData, setAllData] = useState<any[]>([]);
     const [activeUmkms, setActiveUmkms] = useState<any[]>([]);
     const [summaryData, setSummaryData] = useState(initialSummaryData);
-    const [monthlyData, setMonthlyData] = useState(initialMonthlyData);
+    const [monthlyData, setMonthlyData] = useState<MonthlyRow[]>(initialMonthlyData);
     const [showPeriodModal, setShowPeriodModal] = useState(false);
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
@@ -334,37 +344,84 @@ export default function Laporan() {
                                 <tr className="bg-gray-50/50">
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Tanggal</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Pemilik UMKM</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Unit Masuk</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Unit Terkirim</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Nama Produk</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Stok</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Harga / Unit</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-right">Total Harga</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-right">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {monthlyData.map((data: any, index) => (
-                                    <tr key={index} className="hover:bg-blue-50/30 transition-colors">
-                                        <td className="py-5 px-6 text-sm font-bold text-gray-800">{data.tanggal || data.month}</td>
-                                        <td className="py-5 px-6 text-sm font-bold text-blue-900">{data.owner}</td>
-                                        <td className="py-5 px-6 text-sm font-extrabold text-blue-600 text-center">{data.masuk}</td>
-                                        <td className="py-5 px-6 text-sm font-extrabold text-green-600 text-center">{data.keluar}</td>
-                                        <td className="py-5 px-6 text-right">
-                                            <button 
-                                                onClick={() => {
-                                                    setSelectedDetailData(data);
-                                                    setIsDetailModalOpen(true);
-                                                }}
-                                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white font-bold rounded-xl transition-all text-xs border border-blue-100 hover:border-blue-600 shadow-sm"
-                                            >
-                                                <Eye size={14} /> Detail
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {monthlyData.map((data: any, index) => {
+                                    const items = Array.isArray(data.items) && data.items.length > 0 ? data.items : [];
+                                    if (items.length === 0) {
+                                        return (
+                                            <tr key={index} className="hover:bg-blue-50/30 transition-colors">
+                                                <td className="py-5 px-6 text-sm font-bold text-gray-800">{data.tanggal || data.month}</td>
+                                                <td className="py-5 px-6 text-sm font-bold text-blue-900">{data.owner}</td>
+                                                <td colSpan={3} className="py-5 px-6 text-sm font-extrabold text-gray-800 text-center">-</td>
+                                                <td className="py-5 px-6 text-sm font-extrabold text-blue-700 text-right">{formatCurrency(Number(data.totalRawValue || 0))}</td>
+                                                <td className="py-5 px-6 text-right">
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedDetailData(data);
+                                                            setIsDetailModalOpen(true);
+                                                        }}
+                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white font-bold rounded-xl transition-all text-xs border border-blue-100 hover:border-blue-600 shadow-sm"
+                                                    >
+                                                        <Eye size={14} /> Detail
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
+
+                                    return items.map((it: any, j: number) => {
+                                        const qty = Number(it.product?.quantity || 0);
+                                        const price = Number(it.product?.price || 0);
+                                        const total = qty * price;
+                                        return (
+                                            <tr key={`${index}-${j}`} className="hover:bg-blue-50/30 transition-colors">
+                                                {j === 0 && (
+                                                    <td rowSpan={items.length} className="py-5 px-6 text-sm font-bold text-gray-800 align-top">{data.tanggal || data.month}</td>
+                                                )}
+                                                {j === 0 && (
+                                                    <td rowSpan={items.length} className="py-5 px-6 text-sm font-bold text-blue-900 align-top">{data.owner}</td>
+                                                )}
+                                                <td className="py-5 px-6 text-sm font-extrabold text-gray-800">{it.product?.name || 'Produk Unknown'}</td>
+                                                <td className="py-5 px-6 text-sm font-extrabold text-blue-600 text-center">{qty}</td>
+                                                <td className="py-5 px-6 text-sm font-extrabold text-blue-900 text-center">{formatCurrency(price)}</td>
+                                                <td className="py-5 px-6 text-sm font-extrabold text-blue-700 text-right">{it.status === 'completed' ? formatCurrency(total) : <span className="text-xs font-semibold uppercase tracking-[0.15em] text-orange-600">{it.status === 'active' ? 'Belum Keluar' : it.status}</span>}</td>
+                                                {j === 0 && (
+                                                    <td rowSpan={items.length} className="py-5 px-6 text-right align-top">
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedDetailData(data);
+                                                                setIsDetailModalOpen(true);
+                                                            }}
+                                                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white font-bold rounded-xl transition-all text-xs border border-blue-100 hover:border-blue-600 shadow-sm"
+                                                        >
+                                                            <Eye size={14} /> Detail
+                                                        </button>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        );
+                                    });
+                                })}
                                 {monthlyData.length === 0 || (monthlyData[0].owner === "-" && (
                                     <tr>
-                                        <td colSpan={5} className="py-12 text-center text-gray-400 italic">Belum ada data rekapitulasi tersedia.</td>
+                                        <td colSpan={7} className="py-12 text-center text-gray-400 italic">Belum ada data rekapitulasi tersedia.</td>
                                     </tr>
                                 ))}
                             </tbody>
+                            <tfoot>
+                                <tr className="bg-gray-50">
+                                    <td colSpan={5} className="py-4 px-6 text-sm font-extrabold text-gray-700">Total Akumulasi Nilai</td>
+                                    <td className="py-4 px-6 text-sm font-extrabold text-blue-900 text-right">{formatCurrency(monthlyData.reduce((s: number, d: any) => s + Number(d.totalRawValue || 0), 0))}</td>
+                                    <td className="py-4 px-6" />
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>
