@@ -73,28 +73,51 @@ class UmkmUserDashboardController extends Controller
             return response()->json(['message' => 'UMKM profile not found'], 404);
         }
 
-        $products = Product::where('umkm_id', $umkm->id)->get();
+        $products = Product::where('umkm_id', $umkm->id)
+            ->select('id', 'name', 'category', 'price', 'status', 'quantity', 'umkm_id', 'created_at', 'updated_at')
+            ->orderBy('created_at', 'desc')
+            ->get();
         
-        // Add consignment status info for each product
+        // Add consignment-driven status info for each product so UI shows correct state
         $productsWithStatus = $products->map(function ($product) {
             $hasActive = Consignment::where('product_id', $product->id)
                 ->where('status', 'active')
                 ->exists();
-            
+
             $hasCancelled = Consignment::where('product_id', $product->id)
                 ->where('status', 'cancelled')
                 ->exists();
-            
-            // Simpan stok katalog asli
+
+            $hasCompleted = Consignment::where('product_id', $product->id)
+                ->where('status', 'completed')
+                ->exists();
+
+            // Preserve original catalog quantity
             $catalogQty = $product->quantity;
-            
-            // Untuk kebutuhan UI: tampilkan stok katalog jika sedang aktif/retur, agar badge status sesuai
-            $product->quantity = $hasActive ? $catalogQty : 0;
-            $product->cancelled_quantity = $hasCancelled ? $catalogQty : 0;
-            
-            // Sertakan juga stok asli jika diperlukan di masa depan
+
+            // For UI: if there's an active consignment, show the product as "in_transit" regardless of product.status
+            if ($hasActive) {
+                $product->ui_status = 'in_transit';
+                $product->quantity = $catalogQty; // show stock for products already dititipkan
+                $product->cancelled_quantity = 0;
+            } elseif ($hasCancelled) {
+                $product->ui_status = 'returned';
+                $product->quantity = 0;
+                $product->cancelled_quantity = $catalogQty;
+            } elseif ($hasCompleted) {
+                $product->ui_status = 'ready';
+                $product->quantity = $catalogQty;
+                $product->cancelled_quantity = 0;
+            } else {
+                // No active/finished consignments — product still in catalog input/review stage.
+                $product->ui_status = 'pending_review';
+                $product->quantity = $catalogQty;
+                $product->cancelled_quantity = 0;
+            }
+
+            // Include original catalog quantity for reference
             $product->catalog_quantity = $catalogQty;
-            
+
             return $product;
         });
 
@@ -114,7 +137,7 @@ class UmkmUserDashboardController extends Controller
             return response()->json(['message' => 'UMKM profile not found'], 404);
         }
 
-        $consignments = Consignment::with('product')->where('umkm_id', $umkm->id)->get();
+        $consignments = Consignment::with('product')->where('umkm_id', $umkm->id)->orderBy('created_at', 'desc')->get();
         return response()->json($consignments);
     }
 

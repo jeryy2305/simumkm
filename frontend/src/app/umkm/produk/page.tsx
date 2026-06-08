@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Package, AlertCircle } from "lucide-react";
+import { Search, Clock, AlertCircle } from "lucide-react";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
 import FloatingWhatsAppButton from "@/components/FloatingWhatsAppButton";
 
@@ -12,45 +12,52 @@ export default function ProdukUMKM() {
   const [error, setError] = useState<string | null>(null);
   const [umkmStatus, setUmkmStatus] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchProducts = async () => {
+    try {
+      // Cek status terlebih dahulu
       try {
-        // Cek status terlebih dahulu
-        try {
-          const dashRes = await authFetch(`${API_URL}/api/umkm-user/dashboard`);
-          if (dashRes.ok) {
-            const dashData = await parseJson<any>(dashRes);
-            if (dashData?.umkm?.status === "inactive") {
-              setUmkmStatus("inactive");
-              setLoading(false);
-              return;
-            }
+        const dashRes = await authFetch(`${API_URL}/api/umkm-user/dashboard`);
+        if (dashRes.ok) {
+          const dashData = await parseJson<any>(dashRes);
+          if (dashData?.umkm?.status === "inactive") {
+            setUmkmStatus("inactive");
+            setLoading(false);
+            return;
           }
-        } catch (e) { }
-
-        const res = await authFetch(`${API_URL}/api/umkm-user/products`);
-        if (res.ok) {
-          const data = await parseJson<any[]>(res);
-          setProducts(data);
-        } else {
-          let errorMessage = res.statusText;
-          try {
-            const errorData = await parseJson<{ message?: string }>(res);
-            errorMessage = errorData?.message || errorMessage;
-          } catch (parseError) {
-            // If not JSON, keep status text
-          }
-          console.error("Produk UMKM fetch failed", errorMessage);
-          setError(errorMessage);
         }
-      } catch (err) {
-        console.error("Fetch products failed", err);
-        setError(err instanceof Error ? err.message : "Terjadi kesalahan jaringan");
-      } finally {
-        setLoading(false);
+      } catch (e) { }
+
+      const res = await authFetch(`${API_URL}/api/umkm-user/products`);
+      if (res.ok) {
+        const data = await parseJson<any[]>(res);
+        console.log("Products API Response:", data); // DEBUG
+        setProducts(data);
+      } else {
+        let errorMessage = res.statusText;
+        try {
+          const errorData = await parseJson<{ message?: string }>(res);
+          errorMessage = errorData?.message || errorMessage;
+        } catch (parseError) {
+          // If not JSON, keep status text
+        }
+        console.error("Produk UMKM fetch failed", errorMessage);
+        setError(errorMessage);
       }
-    };
-    fetchData();
+    } catch (err) {
+      console.error("Fetch products failed", err);
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan jaringan");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+    
+    // Auto-refresh data setiap 2 detik
+    const interval = setInterval(fetchProducts, 2000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   if (umkmStatus === "inactive") {
@@ -87,17 +94,26 @@ export default function ProdukUMKM() {
 
       {/* Search Bar */}
       <div className="relative">
-        <div className="relative flex-1">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Search size={20} className="text-blue-400" />
+        <div className="relative flex-1 flex gap-2">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search size={20} className="text-blue-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Cari produk Anda..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="block w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 bg-white shadow-sm transition-all"
+            />
           </div>
-          <input
-            type="text"
-            placeholder="Cari produk Anda..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="block w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 bg-white shadow-sm transition-all"
-          />
+          <button
+            onClick={fetchProducts}
+            className="px-5 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl shadow-sm transition-all active:scale-95"
+            title="Refresh data"
+          >
+            ↻
+          </button>
         </div>
       </div>
 
@@ -130,7 +146,7 @@ export default function ProdukUMKM() {
             .map((product) => (
               <div key={product.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg overflow-hidden flex flex-col group transition-all duration-300 hover:-translate-y-1">
                 <div className="p-3 md:p-4 flex-1 flex flex-col">
-                  <h3 className="text-sm font-bold text-gray-900 line-clamp-2 leading-tight mb-3 group-hover:text-blue-800 transition-colors">{product.name}</h3>
+                  <h3 className="text-sm font-bold text-gray-900 line-clamp-2 leading-tight mb-2 group-hover:text-blue-800 transition-colors">{product.name}</h3>
                   
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center justify-between">
@@ -142,26 +158,22 @@ export default function ProdukUMKM() {
                     
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Status</span>
-                      <span className={`inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                        product.cancelled_quantity > 0
-                          ? 'bg-red-100 text-red-700'
-                          : product.quantity > 0 
-                            ? 'bg-amber-100 text-amber-700' 
-                            : product.status === 'available' 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-red-100 text-red-700'
-                      }`}>
-                        {product.cancelled_quantity > 0
-                          ? 'Retur'
-                          : product.quantity > 0 
-                            ? 'Dalam Penyaluran' 
-                            : product.status === 'available' 
-                              ? '✓ Siap Dititip' 
-                              : 'Habis'}
-                      </span>
+                      {product.ui_status === 'returned' ? (
+                        <span className="inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700">Retur</span>
+                      ) : product.ui_status === 'in_transit' ? (
+                        <span className="inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700">Dalam Penyaluran</span>
+                      ) : product.ui_status === 'pending_review' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-sky-100 text-sky-700">
+                          <Clock size={12} /> Sedang Ditinjau
+                        </span>
+                      ) : product.ui_status === 'ready' ? (
+                        <span className="inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700">Selesai Dititip</span>
+                      ) : (
+                        <span className="inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700">Habis</span>
+                      )}
                     </div>
                   </div>
-                  
+
                   <p className="text-base md:text-lg font-extrabold text-blue-700 mt-auto">Rp {Number(product.price).toLocaleString('id-ID')}</p>
                 </div>
               </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Check, X, Search, Trash2, Edit, ClipboardList, MapPin, Package, Building2, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { Modal } from "@/components/Modal";
+import Toast from "@/components/Toast";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
 
 export default function DataPenitipan() {
@@ -13,6 +14,7 @@ export default function DataPenitipan() {
     const [umkms, setUmkms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [notification, setNotification] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
 
     const activeUmkms = umkms.filter(u => u.status === 'active');
     const availableProducts = products.filter(p => p.status === 'available' && p.umkm?.status === 'active');
@@ -36,6 +38,12 @@ export default function DataPenitipan() {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        if (!notification) return;
+        const timer = window.setTimeout(() => setNotification(null), 4000);
+        return () => window.clearTimeout(timer);
+    }, [notification]);
+
     const fetchData = async () => {
         try {
             setLoading(true);
@@ -47,7 +55,8 @@ export default function DataPenitipan() {
 
             if (!consRes.ok || !prodRes.ok || !umkmRes.ok) throw new Error('Failed to fetch data');
 
-            setConsignments(await parseJson(consRes));
+            const consignmentData = await parseJson<any[]>(consRes);
+            setConsignments(consignmentData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
             setProducts(await parseJson(prodRes));
             setUmkms(await parseJson(umkmRes));
         } catch (err: any) {
@@ -61,7 +70,8 @@ export default function DataPenitipan() {
         try {
             const response = await authFetch(`${API_URL}/api/consignments`);
             if (response.ok) {
-                setConsignments(await parseJson(response));
+                const data = await parseJson<any[]>(response);
+                setConsignments(data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
             }
         } catch (err) { }
     };
@@ -112,8 +122,9 @@ export default function DataPenitipan() {
             if (!response.ok) throw new Error('Gagal mengupdate data');
             await fetchConsignments();
             setIsEditModalOpen(false);
+            setNotification({ type: 'success', message: 'Data penitipan berhasil diperbarui.' });
         } catch (err: any) {
-            alert(err.message);
+            setNotification({ type: 'error', message: err.message });
         }
     };
 
@@ -123,8 +134,9 @@ export default function DataPenitipan() {
             const response = await authFetch(`${API_URL}/api/consignments/${id}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Gagal menghapus data');
             setConsignments(consignments.filter(c => c.id !== id));
+            setNotification({ type: 'success', message: 'Arsip penitipan berhasil dihapus.' });
         } catch (err: any) {
-            alert(err.message);
+            setNotification({ type: 'error', message: err.message });
         }
     };
 
@@ -138,8 +150,9 @@ export default function DataPenitipan() {
             if (!response.ok) throw new Error('Gagal menyimpan data');
             await fetchConsignments();
             setIsModalOpen(false);
+            setNotification({ type: 'success', message: 'Data penitipan berhasil disimpan.' });
         } catch (err: any) {
-            alert(err.message);
+            setNotification({ type: 'error', message: err.message });
         }
     };
 
@@ -161,6 +174,7 @@ export default function DataPenitipan() {
 
     return (
         <div className="space-y-6 md:pb-24 font-sans text-gray-800">
+            {notification && <Toast type={notification.type} message={notification.message} onClose={() => setNotification(null)} />}
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
                 <div>
@@ -362,14 +376,19 @@ export default function DataPenitipan() {
 
                     <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Tujuan Distribusi (Instansi / Hotel)</label>
-                        <input
-                            type="text"
+                        <select
                             required
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm font-semibold text-gray-800"
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer"
                             value={formData.company}
                             onChange={e => setFormData({ ...formData, company: e.target.value })}
-                            placeholder="Contoh: Hotel Nagoya Batam..."
-                        />
+                        >
+                            <option value="" disabled>Pilih Hotel Tujuan...</option>
+                            <option value="Hotel Aston Pelita">Hotel Aston Pelita</option>
+                            <option value="Hotel Best Western Premier">Hotel Best Western Premier</option>
+                            <option value="Hotel Harmoni Suites">Hotel Harmoni Suites</option>
+                            <option value="Hotel Marriot">Hotel Marriot</option>
+                            <option value="Hotel Radisson">Hotel Radisson</option>
+                        </select>
                     </div>
                     <div>
                         <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Tanggal Berangkat</label>
@@ -392,15 +411,21 @@ export default function DataPenitipan() {
             <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Pembaruan Log Data">
                 {editItem && (
                     <form onSubmit={handleEditSubmit} className="space-y-5 px-1 py-2">
-                        <div>
+                            <div>
                             <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Tujuan Distribusi Baru</label>
-                            <input
-                                type="text"
+                            <select
                                 required
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm font-semibold text-gray-800"
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer"
                                 value={editItem.company}
                                 onChange={e => setEditItem({ ...editItem, company: e.target.value })}
-                            />
+                            >
+                                <option value="" disabled>Pilih Hotel Tujuan...</option>
+                                <option value="Hotel Aston Pelita">Hotel Aston Pelita</option>
+                                <option value="Hotel Best Western Premier">Hotel Best Western Premier</option>
+                                <option value="Hotel Harmoni Suites">Hotel Harmoni Suites</option>
+                                <option value="Hotel Marriot">Hotel Marriot</option>
+                                <option value="Hotel Radisson">Hotel Radisson</option>
+                            </select>
                         </div>
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Rekonsiliasi Status</label>

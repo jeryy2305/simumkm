@@ -9,7 +9,7 @@ class ConsignmentController extends Controller
 {
     public function index()
     {
-        return response()->json(Consignment::with('umkm', 'product')->get());
+        return response()->json(Consignment::with('umkm', 'product')->orderBy('created_at', 'desc')->get());
     }
 
     public function store(Request $request)
@@ -49,7 +49,27 @@ class ConsignmentController extends Controller
 
     public function destroy(Consignment $consignment)
     {
+        // Capture product id before deleting consignment
+        $productId = $consignment->product_id;
+
+        // Delete the consignment
         $consignment->delete();
+
+        // If there are no more consignments for this product, remove the product
+        $hasOther = Consignment::where('product_id', $productId)->exists();
+        if (! $hasOther) {
+            try {
+                // Use model to delete so events/cascades run
+                $product = \App\Models\Product::find($productId);
+                if ($product) {
+                    $product->delete();
+                }
+            } catch (\Exception $e) {
+                // Log but don't fail the request
+                logger()->error('Failed to delete product after consignment removal: ' . $e->getMessage());
+            }
+        }
+
         return response()->json(['message' => 'Deleted']);
     }
 }

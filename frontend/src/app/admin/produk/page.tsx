@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Edit, Trash2, Search, PackageOpen, Tag, Store } from "lucide-react";
 import { Modal } from "@/components/Modal";
+import Toast from "@/components/Toast";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
 
 export default function DataProduk() {
@@ -12,6 +13,7 @@ export default function DataProduk() {
     const [umkmsList, setUmkmsList] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [notification, setNotification] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
 
     const activeUmkms = umkmsList.filter(u => u.status === 'active');
 
@@ -31,6 +33,12 @@ export default function DataProduk() {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        if (!notification) return;
+        const timer = window.setTimeout(() => setNotification(null), 4000);
+        return () => window.clearTimeout(timer);
+    }, [notification]);
+
     const fetchData = async () => {
         try {
             setLoading(true);
@@ -41,7 +49,8 @@ export default function DataProduk() {
 
             if (!prodRes.ok || !umkmRes.ok) throw new Error('Failed to fetch data');
 
-            setProducts(await parseJson<any[]>(prodRes));
+            const productsData = await parseJson<any[]>(prodRes);
+            setProducts(productsData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
             setUmkmsList(await parseJson<any[]>(umkmRes));
         } catch (err: any) {
             setError(err.message);
@@ -55,7 +64,7 @@ export default function DataProduk() {
             const response = await authFetch(`${API_URL}/api/products`);
             if (response.ok) {
                 const data = await parseJson<any[]>(response);
-                setProducts(data);
+                setProducts(data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
             }
         } catch (err) { }
     }
@@ -110,8 +119,9 @@ export default function DataProduk() {
                 throw new Error(errorMessage);
             }
             setProducts(products.filter(p => p.id !== id));
+            setNotification({ type: 'success', message: 'Produk berhasil dihapus.' });
         } catch (err: any) {
-            alert(err.message);
+            setNotification({ type: 'error', message: err.message });
         }
     };
 
@@ -137,13 +147,15 @@ export default function DataProduk() {
 
             await fetchProducts(); // Re-fetch to get relationships populated
             setIsModalOpen(false);
+            setNotification({ type: 'success', message: editItem ? 'Produk berhasil diperbarui.' : 'Produk berhasil ditambahkan.' });
         } catch (err: any) {
-            alert(err.message);
+            setNotification({ type: 'error', message: err.message });
         }
     };
 
     return (
         <div className="space-y-6 md:pb-24 font-sans text-gray-800">
+            {notification && <Toast type={notification.type} message={notification.message} onClose={() => setNotification(null)} />}
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
                 <div>

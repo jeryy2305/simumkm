@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Edit, Trash2, Search, Store, ClipboardList } from "lucide-react";
 import { Modal } from "@/components/Modal";
+import Toast from "@/components/Toast";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
 
 export default function DataUMKM() {
@@ -10,6 +11,7 @@ export default function DataUMKM() {
     const [umkms, setUmkms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [notification, setNotification] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
 
     // CRUD States
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -25,6 +27,12 @@ export default function DataUMKM() {
     useEffect(() => {
         fetchUmkms();
     }, []);
+
+    useEffect(() => {
+        if (!notification) return;
+        const timer = window.setTimeout(() => setNotification(null), 4000);
+        return () => window.clearTimeout(timer);
+    }, [notification]);
 
     const fetchUmkms = async () => {
         try {
@@ -74,8 +82,9 @@ export default function DataUMKM() {
             const response = await authFetch(`${API_URL}/api/umkms/${id}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Gagal menghapus data');
             setUmkms(umkms.filter(u => u.id !== id));
+            setNotification({ type: 'success', message: 'UMKM berhasil dihapus.' });
         } catch (err: any) {
-            alert(err.message);
+            setNotification({ type: 'error', message: err.message });
         }
     };
 
@@ -107,12 +116,14 @@ export default function DataUMKM() {
             const data = await parseJson<any>(response);
             if (editItem) {
                 setUmkms(umkms.map(u => u.id === data.id ? data : u));
+                setNotification({ type: 'success', message: 'UMKM berhasil diperbarui.' });
             } else {
                 setUmkms([...umkms, data]);
+                setNotification({ type: 'success', message: 'UMKM berhasil ditambahkan.' });
             }
             setIsModalOpen(false);
         } catch (err: any) {
-            alert(err.message);
+            setNotification({ type: 'error', message: err.message });
         }
     };
 
@@ -133,13 +144,15 @@ export default function DataUMKM() {
                 throw new Error(errorMessage);
             }
             setUmkms(umkms.map(u => u.id === id ? { ...u, status: newStatus } : u));
+            setNotification({ type: 'success', message: 'Status UMKM berhasil diperbarui.' });
         } catch (err: any) {
-            alert(err.message);
+            setNotification({ type: 'error', message: err.message });
         }
     };
 
     return (
         <div className="space-y-6 pb-24 font-sans text-gray-800">
+            {notification && <Toast type={notification.type} message={notification.message} onClose={() => setNotification(null)} />}
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
                 <div>

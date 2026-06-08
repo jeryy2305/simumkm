@@ -151,7 +151,7 @@ export default function PenitipanUMKM() {
                   </div>
                   <div className="flex flex-col items-start gap-1 text-right sm:items-end">
                     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.24em] ${item.status === 'active' ? 'bg-amber-100 text-amber-700' : item.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {item.status === 'active' ? 'Dalam Penyaluran' : item.status === 'completed' ? 'Tuntas' : 'Retur'}
+                      {item.status === 'active' ? 'Dalam Penyaluran' : item.status === 'completed' ? 'Selesai Dititip' : 'Retur'}
                     </span>
                     <span className="text-[11px] text-slate-500 uppercase tracking-[0.24em]">{new Date(item.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                   </div>

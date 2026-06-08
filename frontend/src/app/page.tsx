@@ -49,8 +49,9 @@ export default function Home() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden text-blue-950 p-2"
+            className="md:hidden text-blue-950 p-3 bg-gray-100 rounded-2xl border border-gray-200 shadow-sm hover:bg-gray-200 transition-all focus:outline-none focus:ring-2 focus:ring-blue-300"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label={isMenuOpen ? "Tutup menu" : "Buka menu"}
           >
             {isMenuOpen ? <X size={26} /> : <Menu size={26} />}
           </button>
@@ -58,14 +59,14 @@ export default function Home() {
 
         {/* Mobile Nav */}
         {isMenuOpen && (
-          <div className="md:hidden pt-6 pb-4 border-t border-gray-100 mt-4 space-y-5 px-2">
-            <a href="#beranda" onClick={() => setIsMenuOpen(false)} className="block text-gray-700 hover:text-blue-800 font-semibold text-lg">Beranda</a>
-            <a href="#layanan" onClick={() => setIsMenuOpen(false)} className="block text-gray-700 hover:text-blue-800 font-semibold text-lg">Fitur & Layanan</a>
-            <a href="#tentang" onClick={() => setIsMenuOpen(false)} className="block text-gray-700 hover:text-blue-800 font-semibold text-lg">Tentang Perusahaan</a>
-            <a href="#kontak" onClick={() => setIsMenuOpen(false)} className="block text-gray-700 hover:text-blue-800 font-semibold text-lg">Kontak</a>
-            <div className="pt-4 border-t border-gray-100">
+          <div className="md:hidden mt-4 rounded-3xl border border-gray-200 bg-white shadow-lg shadow-gray-200/50 p-4 space-y-4">
+            <a href="#beranda" onClick={() => setIsMenuOpen(false)} className="block text-gray-700 hover:text-blue-800 font-semibold text-base transition-colors">Beranda</a>
+            <a href="#layanan" onClick={() => setIsMenuOpen(false)} className="block text-gray-700 hover:text-blue-800 font-semibold text-base transition-colors">Fitur & Layanan</a>
+            <a href="#tentang" onClick={() => setIsMenuOpen(false)} className="block text-gray-700 hover:text-blue-800 font-semibold text-base transition-colors">Tentang Perusahaan</a>
+            <a href="#kontak" onClick={() => setIsMenuOpen(false)} className="block text-gray-700 hover:text-blue-800 font-semibold text-base transition-colors">Kontak</a>
+            <div className="pt-3 border-t border-gray-100">
               <Link href="/login" onClick={() => setIsMenuOpen(false)}>
-                <button className="w-full py-3 bg-blue-900 text-white font-semibold rounded-xl shadow-md">
+                <button className="w-full py-3 bg-blue-900 text-white font-semibold rounded-2xl shadow-md shadow-blue-900/20 transition-all hover:bg-blue-800">
                   Akses Portal Mitra
                 </button>
               </Link>

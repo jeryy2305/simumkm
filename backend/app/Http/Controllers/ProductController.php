@@ -9,7 +9,7 @@ class ProductController extends Controller
 {
     public function index()
     {
-        return response()->json(Product::with('umkm')->get());
+        return response()->json(Product::with('umkm')->orderBy('created_at', 'desc')->get());
     }
 
     public function store(Request $request)
