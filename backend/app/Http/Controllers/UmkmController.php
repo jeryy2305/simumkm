@@ -11,7 +11,7 @@ class UmkmController extends Controller
 {
     public function index()
     {
-        return response()->json(Umkm::with('user')->get());
+        return response()->json(Umkm::with('user')->orderBy('created_at', 'desc')->get());
     }
 
     public function store(Request $request)
@@ -19,6 +19,7 @@ class UmkmController extends Controller
         $request->validate([
             'owner' => 'required',
             'phone' => 'required',
+            'address' => 'nullable|string',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
             'join_date' => 'required|date',
@@ -35,6 +36,7 @@ class UmkmController extends Controller
             'name' => $request->owner,
             'owner' => $request->owner,
             'phone' => $request->phone,
+            'address' => $request->address ?? null,
             'join_date' => $request->join_date,
             'status' => 'active',
             'user_id' => $user->id,
@@ -53,6 +55,7 @@ class UmkmController extends Controller
         $request->validate([
             'owner' => 'required',
             'phone' => 'required',
+            'address' => 'nullable|string',
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($umkm->user_id)],
             'password' => ['nullable', 'string', 'min:8'],
             'join_date' => 'required|date',
@@ -67,7 +70,7 @@ class UmkmController extends Controller
             $user->save();
         }
 
-        $umkm->update($request->only(['owner', 'phone', 'join_date']));
+        $umkm->update($request->only(['owner', 'phone', 'address', 'join_date']));
         $umkm->update(['name' => $request->owner]);
         return response()->json($umkm->load('user'));
     }

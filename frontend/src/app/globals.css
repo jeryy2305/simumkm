@@ -13,3 +13,12 @@
     @apply bg-background text-gray-900 antialiased;
   }
 }
+
+@layer components {
+  .modal-content button {
+    @apply cursor-pointer;
+  }
+  .modal-content .icon-toggle {
+    @apply cursor-pointer;
+  }
+}

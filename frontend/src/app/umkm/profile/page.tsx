@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { API_URL, authFetch, parseJson, getAuthUser } from "@/lib/auth";
-import { User, Check, AlertCircle } from "lucide-react";
+import { API_URL, authFetch, parseJson, getAuthUser, setAuthUser } from "@/lib/auth";
+import { User, Check, AlertCircle, Eye, EyeOff } from "lucide-react";
 
 interface ProfileUser {
   id: number;
@@ -10,6 +10,9 @@ interface ProfileUser {
   email: string;
   role: string;
   created_at: string;
+  umkm?: {
+    address?: string;
+  };
 }
 
 export default function ProfilePage() {
@@ -23,6 +26,14 @@ export default function ProfilePage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Password change states
+  const [passwordForm, setPasswordForm] = useState({ current_password: "", password: "", password_confirmation: "" });
+  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordSuccessMessage, setPasswordSuccessMessage] = useState<string | null>(null);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -80,11 +91,49 @@ export default function ProfilePage() {
 
       const result = await parseJson<{ message: string; user: ProfileUser }>(res);
       setUser(result.user);
+      // update stored auth user to keep UI consistent across app
+      try {
+        setAuthUser(result.user as any);
+      } catch (e) {}
       setSuccessMessage(result.message);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Terjadi kesalahan");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordErrors({});
+    setPasswordSuccessMessage(null);
+    setIsChangingPassword(true);
+
+    try {
+      const res = await authFetch(`${API_URL}/api/profile/password`, {
+        method: "POST",
+        body: JSON.stringify(passwordForm),
+      });
+
+      if (!res.ok) {
+        const data = await parseJson<{ errors?: Record<string, string[]>; message?: string }>(res);
+        if (data.errors) {
+          const errors: Record<string, string> = {};
+          Object.entries(data.errors).forEach(([key, messages]) => {
+            errors[key] = (messages as string[])[0];
+          });
+          setPasswordErrors(errors);
+        }
+        throw new Error(data.message || "Gagal mengubah password");
+      }
+
+      const result = await parseJson<{ message: string }>(res);
+      setPasswordSuccessMessage(result.message);
+      setPasswordForm({ current_password: "", password: "", password_confirmation: "" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan");
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -186,53 +235,82 @@ export default function ProfilePage() {
                 </h2>
               </div>
 
-              <form onSubmit={handleUpdateProfile} className="p-8 space-y-6">
+              <div className="p-8 space-y-6">
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
-                    Nama Lengkap
-                  </label>
-                  <input
-                    type="text"
-                    value={nameForm.name}
-                    onChange={(e) => setNameForm({ ...nameForm, name: e.target.value })}
-                    className={`w-full px-5 py-3 border-2 rounded-xl outline-none transition ${formErrors.name ? "border-red-500" : "border-gray-200"} focus:ring-2 focus:ring-blue-600 focus:border-blue-600 text-base font-medium`}
-                    placeholder="Nama lengkap"
-                  />
-                  {formErrors.name && <p className="text-red-600 text-sm mt-2">{formErrors.name}</p>}
+                  <label className="block text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Nama Lengkap</label>
+                  <p className="w-full px-5 py-3 border-2 rounded-xl bg-gray-50 text-base font-medium text-gray-800">{user?.name || nameForm.name}</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={nameForm.email}
-                    onChange={(e) => setNameForm({ ...nameForm, email: e.target.value })}
-                    className={`w-full px-5 py-3 border-2 rounded-xl outline-none transition ${formErrors.email ? "border-red-500" : "border-gray-200"} focus:ring-2 focus:ring-blue-600 focus:border-blue-600 text-base font-medium`}
-                    placeholder="Alamat email"
-                  />
-                  {formErrors.email && <p className="text-red-600 text-sm mt-2">{formErrors.email}</p>}
+                  <label className="block text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Email</label>
+                  <p className="w-full px-5 py-3 border-2 rounded-xl bg-gray-50 text-base font-medium text-gray-800">{user?.email || nameForm.email}</p>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 text-white font-bold py-3 px-6 rounded-xl transition duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                      Memproses...
-                    </>
-                  ) : (
-                    "Simpan Perubahan"
-                  )}
-                </button>
-              </form>
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Alamat</label>
+                  <p className="w-full px-5 py-3 border-2 rounded-xl bg-gray-50 text-base font-medium text-gray-800">{user?.umkm?.address || '-'}</p>
+                </div>
+              </div>
+              {/* Change Password Form */}
+              <div className="mt-6 p-8 border-t">
+                <h3 className="text-xl font-bold mb-4">Ubah Password</h3>
+                {passwordSuccessMessage && (
+                  <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg">{passwordSuccessMessage}</div>
+                )}
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-2">Password Saat Ini</label>
+                    <div className="relative">
+                      <input
+                        type={showCurrentPassword ? 'text' : 'password'}
+                        value={passwordForm.current_password}
+                        onChange={e => setPasswordForm({ ...passwordForm, current_password: e.target.value })}
+                        className={`w-full px-4 py-2 border-2 rounded-xl ${passwordErrors.current_password ? 'border-red-500' : 'border-gray-200'}`}
+                      />
+                      <button type="button" onClick={() => setShowCurrentPassword(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 icon-toggle" aria-label="Toggle current password visibility">
+                        {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    {passwordErrors.current_password && <p className="text-red-600 text-sm mt-2">{passwordErrors.current_password}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-2">Password Baru</label>
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={passwordForm.password}
+                        onChange={e => setPasswordForm({ ...passwordForm, password: e.target.value })}
+                        className={`w-full px-4 py-2 border-2 rounded-xl ${passwordErrors.password ? 'border-red-500' : 'border-gray-200'}`}
+                      />
+                      <button type="button" onClick={() => setShowNewPassword(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 icon-toggle" aria-label="Toggle new password visibility">
+                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    {passwordErrors.password && <p className="text-red-600 text-sm mt-2">{passwordErrors.password}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-2">Konfirmasi Password Baru</label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={passwordForm.password_confirmation}
+                        onChange={e => setPasswordForm({ ...passwordForm, password_confirmation: e.target.value })}
+                        className={`w-full px-4 py-2 border-2 rounded-xl ${passwordErrors.password_confirmation ? 'border-red-500' : 'border-gray-200'}`}
+                      />
+                      <button type="button" onClick={() => setShowConfirmPassword(v => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 icon-toggle" aria-label="Toggle confirm password visibility">
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    {passwordErrors.password_confirmation && <p className="text-red-600 text-sm mt-2">{passwordErrors.password_confirmation}</p>}
+                  </div>
+
+                  <button type="submit" disabled={isChangingPassword} className="bg-linear-to-r from-blue-600 to-blue-700 text-white px-5 py-2 rounded-xl font-bold disabled:opacity-50">
+                    {isChangingPassword ? 'Memproses...' : 'Ubah Password'}
+                  </button>
+                </form>
+              </div>
             </div>
 
             {/* Security Tips */}

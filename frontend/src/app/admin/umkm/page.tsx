@@ -19,6 +19,7 @@ export default function DataUMKM() {
     const [formData, setFormData] = useState({
         owner: '',
         phone: '',
+        address: '',
         email: '',
         password: '',
         join_date: ''
@@ -49,7 +50,7 @@ export default function DataUMKM() {
 
     const filteredData = umkms.filter(item =>
         item.owner.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.user?.email ? item.user.email.toLowerCase().includes(searchTerm.toLowerCase()) : false)
+        (item.user?.email ? item.user.email.toLowerCase().includes(searchTerm.toLowerCase()) : false) || (item.address ? item.address.toLowerCase().includes(searchTerm.toLowerCase()) : false)
     );
 
     const handleAdd = () => {
@@ -57,6 +58,7 @@ export default function DataUMKM() {
         setFormData({
             owner: '',
             phone: '',
+            address: '',
             email: '',
             password: '',
             join_date: new Date().toISOString().split('T')[0]
@@ -69,6 +71,7 @@ export default function DataUMKM() {
         setFormData({
             owner: item.owner,
             phone: item.phone,
+            address: item.address ?? '',
             email: item.user?.email ?? '',
             password: '',
             join_date: item.join_date
@@ -118,7 +121,8 @@ export default function DataUMKM() {
                 setUmkms(umkms.map(u => u.id === data.id ? data : u));
                 setNotification({ type: 'success', message: 'UMKM berhasil diperbarui.' });
             } else {
-                setUmkms([...umkms, data]);
+                // place the new UMKM at the top
+                setUmkms([data, ...umkms]);
                 setNotification({ type: 'success', message: 'UMKM berhasil ditambahkan.' });
             }
             setIsModalOpen(false);
@@ -200,6 +204,7 @@ export default function DataUMKM() {
                                 <tr className="bg-gray-50/80">
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">ID</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Informasi Pemilik</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Alamat</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Kontak</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Bergabung</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Akses Status</th>
@@ -220,6 +225,9 @@ export default function DataUMKM() {
                                                     <p className="text-[11px] text-gray-500 font-medium">{item.user?.email ?? 'Tidak ada email'}</p>
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td className="py-4 px-6 text-sm font-semibold text-gray-600 group-hover:text-amber-700 transition-colors">
+                                            {item.address || '—'}
                                         </td>
                                         <td className="py-4 px-6 text-sm font-semibold text-gray-600 group-hover:text-amber-700 transition-colors">
                                             {item.phone}
@@ -262,7 +270,7 @@ export default function DataUMKM() {
                                 ))}
                                 {filteredData.length === 0 && (
                                     <tr>
-                                        <td colSpan={6} className="py-16 text-center text-gray-500">
+                                        <td colSpan={7} className="py-16 text-center text-gray-500">
                                             <div className="flex flex-col items-center justify-center">
                                                 <ClipboardList size={40} className="text-gray-300 mb-4" />
                                                 <p className="font-bold text-gray-700">Tidak Ada Data</p>
@@ -307,15 +315,27 @@ export default function DataUMKM() {
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Kata Sandi (Auth)</label>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Alamat</label>
                         <input
-                            type="password"
+                            type="text"
                             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800"
-                            placeholder={editItem ? "Kosongkan jika tidak ingin mengubah password..." : "Minimal 8 karakter..."}
-                            value={formData.password}
-                            onChange={e => setFormData({ ...formData, password: e.target.value })}
-                            required={!editItem}
+                            placeholder="Alamat lengkap (opsional)"
+                            value={formData.address}
+                            onChange={e => setFormData({ ...formData, address: e.target.value })}
                         />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Kata Sandi (Auth)</label>
+                        <div className="relative">
+                            <input
+                                type={editItem ? 'password' : 'password'}
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800"
+                                placeholder={editItem ? "Kosongkan jika tidak ingin mengubah password..." : "Minimal 8 karakter..."}
+                                value={formData.password}
+                                onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                required={!editItem}
+                            />
+                        </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
@@ -343,14 +363,14 @@ export default function DataUMKM() {
                     <div className="flex justify-end pt-5 space-x-3 border-t border-gray-100 mt-6">
                         <button
                             type="button"
-                            className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                            className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
                             onClick={() => setIsModalOpen(false)}
                         >
                             Batalkan
                         </button>
                         <button
                             type="submit"
-                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all active:scale-95"
+                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all active:scale-95 cursor-pointer"
                         >
                             {editItem ? "Simpan Perubahan" : "Daftarkan UMKM"}
                         </button>

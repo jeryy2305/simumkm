@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Umkm extends Model
 {
-    protected $fillable = ['name', 'owner', 'phone', 'join_date', 'status', 'user_id'];
+    protected $fillable = ['name', 'owner', 'phone', 'address', 'join_date', 'status', 'user_id'];
 
     public function user()
     {
