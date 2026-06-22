@@ -29,7 +29,6 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     // Profile Routes
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile/update', [ProfileController::class, 'updateProfile']);
-    Route::post('/profile/change-password', [ProfileController::class, 'changePassword']);
 
     // Admin Routes
     Route::get('/admin/dashboard/stats', [AdminDashboardController::class, 'stats']);
