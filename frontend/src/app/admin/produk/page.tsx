@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, Search, PackageOpen, Tag, Store } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Plus, Edit, Trash2, Search, PackageOpen, Tag, Store, AlertTriangle, Lock } from "lucide-react";
 import { Modal } from "@/components/Modal";
 import Toast from "@/components/Toast";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
@@ -28,6 +28,65 @@ export default function DataProduk() {
         status: 'available',
         umkm_id: '' as string | number
     });
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+    const [formTouched, setFormTouched] = useState<Record<string, boolean>>({});
+
+    const validateForm = useCallback((data: typeof formData): Record<string, string> => {
+        const errors: Record<string, string> = {};
+        if (!data.name || data.name.trim() === '') {
+            errors.name = 'Nama produk wajib diisi.';
+        }
+        if (!data.category || data.category.trim() === '') {
+            errors.category = 'Kategori wajib dipilih.';
+        }
+        if (!data.price || Number(data.price) <= 0) {
+            errors.price = 'Harga harus lebih dari 0.';
+        }
+        if (data.quantity === undefined || data.quantity === null || Number(data.quantity) <= 0) {
+            errors.quantity = 'Kuantitas harus lebih dari 0.';
+        }
+        if (!data.umkm_id || data.umkm_id === '') {
+            errors.umkm_id = 'Pemilik UMKM wajib dipilih.';
+        }
+        return errors;
+    }, []);
+
+    const isFormValid = useMemo(() => {
+        const errors = validateForm(formData);
+        return Object.keys(errors).length === 0;
+    }, [formData, validateForm]);
+
+    const handleFieldBlur = (field: string) => {
+        setFormTouched(prev => ({ ...prev, [field]: true }));
+        const errors = validateForm(formData);
+        setFormErrors(prev => {
+            const updated = { ...prev };
+            if (errors[field]) {
+                updated[field] = errors[field];
+            } else {
+                delete updated[field];
+            }
+            return updated;
+        });
+    };
+
+    const handleFieldChange = (field: string, value: string | number) => {
+        const newFormData = { ...formData, [field]: value };
+        setFormData(newFormData);
+        // Clear error for this field immediately on change if it was touched
+        if (formTouched[field]) {
+            const errors = validateForm(newFormData);
+            setFormErrors(prev => {
+                const updated = { ...prev };
+                if (errors[field]) {
+                    updated[field] = errors[field];
+                } else {
+                    delete updated[field];
+                }
+                return updated;
+            });
+        }
+    };
 
     useEffect(() => {
         fetchData();
@@ -86,8 +145,10 @@ export default function DataProduk() {
             price: 0,
             quantity: 0,
             status: 'available',
-            umkm_id: activeUmkms.length > 0 ? activeUmkms[0].id : ''
+            umkm_id: ''
         });
+        setFormErrors({});
+        setFormTouched({});
         setIsModalOpen(true);
     };
 
@@ -101,6 +162,8 @@ export default function DataProduk() {
             status: item.status,
             umkm_id: item.umkm_id
         });
+        setFormErrors({});
+        setFormTouched({});
         setIsModalOpen(true);
     };
 
@@ -127,6 +190,22 @@ export default function DataProduk() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Mark all fields as touched so errors show up
+        const allTouched: Record<string, boolean> = {
+            name: true, category: true, price: true, quantity: true, umkm_id: true
+        };
+        setFormTouched(allTouched);
+
+        // Run full validation
+        const errors = validateForm(formData);
+        setFormErrors(errors);
+
+        if (Object.keys(errors).length > 0) {
+            setNotification({ type: 'error', message: 'Harap lengkapi semua field sebelum menyimpan produk.' });
+            return;
+        }
+
         const method = editItem ? 'PUT' : 'POST';
         const url = editItem ? `${API_URL}/api/products/${editItem.id}` : `${API_URL}/api/products`;
         try {
@@ -222,11 +301,11 @@ export default function DataProduk() {
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {filteredData.map((item) => (
-                                    <tr key={item.id} className="hover:bg-blue-50/40 transition-colors group">
+                                    <tr key={item.id} className={`transition-colors group ${item.has_completed_consignment ? 'bg-gray-50/60' : 'hover:bg-blue-50/40'}`}>
                                         <td className="py-4 px-6 text-sm font-bold text-gray-400">#{item.id}</td>
                                         <td className="py-4 px-6">
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-extrabold text-gray-900 group-hover:text-amber-600 transition-colors">{item.name}</span>
+                                                <span className={`text-sm font-extrabold transition-colors ${item.has_completed_consignment ? 'text-gray-500' : 'text-gray-900 group-hover:text-amber-600'}`}>{item.name}</span>
                                                 <span className="text-xs font-bold text-blue-600 mt-0.5">Rp {Number(item.price).toLocaleString('id-ID')}</span>
                                             </div>
                                         </td>
@@ -248,13 +327,22 @@ export default function DataProduk() {
                                         </td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex justify-end space-x-2">
-                                                <button
-                                                    className="p-2 rounded-xl text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white transition-all shadow-sm cursor-pointer"
-                                                    onClick={() => handleEdit(item)}
-                                                    title="Edit Produk"
-                                                >
-                                                    <Edit size={16} />
-                                                </button>
+                                                {item.has_completed_consignment ? (
+                                                    <div
+                                                        className="p-2 rounded-xl text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed"
+                                                        title="Produk terkunci — penitipan sudah berstatus Keluar"
+                                                    >
+                                                        <Lock size={16} />
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        className="p-2 rounded-xl text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white transition-all shadow-sm cursor-pointer"
+                                                        onClick={() => handleEdit(item)}
+                                                        title="Edit Produk"
+                                                    >
+                                                        <Edit size={16} />
+                                                    </button>
+                                                )}
                                                 <button
                                                     className="p-2 rounded-xl text-red-600 bg-red-50 hover:bg-red-600 hover:text-white transition-all shadow-sm cursor-pointer"
                                                     onClick={() => handleDelete(item.id)}
@@ -289,85 +377,150 @@ export default function DataProduk() {
                 onClose={() => setIsModalOpen(false)}
                 title={editItem ? "Edit Spesifikasi Produk" : "Tambah Entri Produk Baru"}
             >
-                <form onSubmit={handleSubmit} className="space-y-5 px-1 py-2">
+                <form onSubmit={handleSubmit} className="space-y-5 px-1 py-2" noValidate>
+                    {/* Nama Produk */}
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Nama Produk Dagang</label>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Nama Produk Dagang <span className="text-red-500">*</span></label>
                         <input
                             type="text"
-                            required
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800"
+                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 outline-none transition-all text-sm font-semibold text-gray-800 ${
+                                formTouched.name && formErrors.name
+                                    ? 'border-red-400 focus:ring-red-200/50 focus:border-red-500'
+                                    : 'border-gray-200 focus:ring-blue-600/20 focus:border-blue-600'
+                            }`}
                             value={formData.name}
-                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                            onChange={e => handleFieldChange('name', e.target.value)}
+                            onBlur={() => handleFieldBlur('name')}
                             placeholder="Contoh: Keripik Singkong Balado..."
                         />
+                        {formTouched.name && formErrors.name && (
+                            <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1">
+                                <AlertTriangle size={12} /> {formErrors.name}
+                            </p>
+                        )}
                     </div>
+
+                    {/* Kategori, Harga, Kuantitas */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Kategori</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Kategori <span className="text-red-500">*</span></label>
                             <select
-                                required
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer"
+                                className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer ${
+                                    formTouched.category && formErrors.category
+                                        ? 'border-red-400 focus:ring-red-200/50 focus:border-red-500'
+                                        : 'border-gray-200 focus:ring-blue-600/20 focus:border-blue-600'
+                                }`}
                                 value={formData.category}
-                                onChange={e => setFormData({ ...formData, category: e.target.value })}
+                                onChange={e => handleFieldChange('category', e.target.value)}
+                                onBlur={() => handleFieldBlur('category')}
                             >
                                 <option value="Makanan">Makanan</option>
                                 <option value="Minuman">Minuman</option>
                                 <option value="Lainnya">Lainnya</option>
                             </select>
+                            {formTouched.category && formErrors.category && (
+                                <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1">
+                                    <AlertTriangle size={12} /> {formErrors.category}
+                                </p>
+                            )}
                         </div>
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Harga Produk (Rp)</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Harga Produk (Rp) <span className="text-red-500">*</span></label>
                             <input
                                 type="number"
-                                required
-                                min="0"
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800"
-                                value={formData.price}
-                                onChange={e => setFormData({ ...formData, price: Number(e.target.value) })}
-                                placeholder="10000"
+                                min="1"
+                                className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 outline-none transition-all text-sm font-semibold text-gray-800 ${
+                                    formTouched.price && formErrors.price
+                                        ? 'border-red-400 focus:ring-red-200/50 focus:border-red-500'
+                                        : 'border-gray-200 focus:ring-blue-600/20 focus:border-blue-600'
+                                }`}
+                                value={formData.price || ''}
+                                onChange={e => handleFieldChange('price', Number(e.target.value))}
+                                onBlur={() => handleFieldBlur('price')}
+                                placeholder="Masukkan harga produk"
                             />
+                            {formTouched.price && formErrors.price && (
+                                <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1">
+                                    <AlertTriangle size={12} /> {formErrors.price}
+                                </p>
+                            )}
                         </div>
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Kuantitas (Unit)</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Kuantitas (Unit) <span className="text-red-500">*</span></label>
                             <input
                                 type="number"
-                                required
-                                min="0"
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800"
-                                value={formData.quantity}
-                                onChange={e => setFormData({ ...formData, quantity: Number(e.target.value) })}
-                                placeholder="0"
+                                min="1"
+                                className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 outline-none transition-all text-sm font-semibold text-gray-800 ${
+                                    formTouched.quantity && formErrors.quantity
+                                        ? 'border-red-400 focus:ring-red-200/50 focus:border-red-500'
+                                        : 'border-gray-200 focus:ring-blue-600/20 focus:border-blue-600'
+                                }`}
+                                value={formData.quantity || ''}
+                                onChange={e => handleFieldChange('quantity', Number(e.target.value))}
+                                onBlur={() => handleFieldBlur('quantity')}
+                                placeholder="Masukkan jumlah unit"
                             />
+                            {formTouched.quantity && formErrors.quantity && (
+                                <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1">
+                                    <AlertTriangle size={12} /> {formErrors.quantity}
+                                </p>
+                            )}
                         </div>
                     </div>
+
+                    {/* Pemilik UMKM */}
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Pemilik UMKM</label>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Pemilik UMKM <span className="text-red-500">*</span></label>
                         <select
-                            required
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer"
+                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer ${
+                                formTouched.umkm_id && formErrors.umkm_id
+                                    ? 'border-red-400 focus:ring-red-200/50 focus:border-red-500'
+                                    : 'border-gray-200 focus:ring-blue-600/20 focus:border-blue-600'
+                            }`}
                             value={formData.umkm_id}
-                            onChange={e => setFormData({ ...formData, umkm_id: Number(e.target.value) })}
+                            onChange={e => handleFieldChange('umkm_id', Number(e.target.value))}
+                            onBlur={() => handleFieldBlur('umkm_id')}
                         >
                             <option value="" disabled>-- Pilih Entitas Mitra --</option>
                             {activeUmkms.map(umkm => (
                                 <option key={umkm.id} value={umkm.id}>{umkm.owner}</option>
                             ))}
                         </select>
+                        {formTouched.umkm_id && formErrors.umkm_id && (
+                            <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1">
+                                <AlertTriangle size={12} /> {formErrors.umkm_id}
+                            </p>
+                        )}
                     </div>
-                    <div className="flex justify-end pt-5 space-x-3 border-t border-gray-100 mt-6">
-                        <button
-                            type="button"
-                            className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
-                            onClick={() => setIsModalOpen(false)}
-                        >
-                            Batalkan
-                        </button>
-                        <button
-                            type="submit"
-                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all active:scale-95"
-                        >
-                            {editItem ? "Simpan Revisi" : "Tambahkan Baru"}
-                        </button>
+
+                    {/* Footer Buttons */}
+                    <div className="flex flex-col gap-3 pt-5 border-t border-gray-100 mt-6">
+                        {!isFormValid && Object.keys(formTouched).length > 0 && (
+                            <div className="flex items-center gap-2 px-4 py-2.5 bg-red-50 border border-red-100 rounded-xl">
+                                <AlertTriangle size={16} className="text-red-500 shrink-0" />
+                                <p className="text-xs font-semibold text-red-600">Semua field bertanda <span className="text-red-500">*</span> wajib diisi dengan benar sebelum menyimpan.</p>
+                            </div>
+                        )}
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                type="button"
+                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                                onClick={() => setIsModalOpen(false)}
+                            >
+                                Batalkan
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={!isFormValid}
+                                className={`px-6 py-2.5 text-sm font-bold rounded-xl shadow-lg transition-all active:scale-95 ${
+                                    isFormValid
+                                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/30 cursor-pointer'
+                                        : 'bg-gray-300 text-gray-500 shadow-none cursor-not-allowed'
+                                }`}
+                            >
+                                {editItem ? "Simpan Revisi" : "Tambahkan Baru"}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </Modal>

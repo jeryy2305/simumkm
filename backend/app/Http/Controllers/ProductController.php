@@ -4,12 +4,22 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Product;
+use App\Models\Consignment;
 
 class ProductController extends Controller
 {
     public function index()
     {
-        return response()->json(Product::with('umkm')->orderBy('created_at', 'desc')->get());
+        $products = Product::with('umkm')->orderBy('created_at', 'desc')->get();
+
+        // Append flag indicating whether the product has a completed consignment ("Keluar")
+        $products->each(function ($product) {
+            $product->has_completed_consignment = Consignment::where('product_id', $product->id)
+                ->where('status', 'completed')
+                ->exists();
+        });
+
+        return response()->json($products);
     }
 
     public function store(Request $request)
@@ -34,6 +44,17 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        // Prevent update if the product has a completed consignment (status "Keluar")
+        $hasCompletedConsignment = Consignment::where('product_id', $product->id)
+            ->where('status', 'completed')
+            ->exists();
+
+        if ($hasCompletedConsignment) {
+            return response()->json([
+                'message' => 'Produk tidak dapat diubah karena sudah memiliki data penitipan berstatus Keluar.'
+            ], 403);
+        }
+
         $request->validate([
             'name' => 'required',
             'category' => 'required|in:Makanan,Minuman,Lainnya',
