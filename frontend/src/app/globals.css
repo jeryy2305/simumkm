@@ -12,6 +12,13 @@
   body {
     @apply bg-background text-gray-900 antialiased;
   }
+
+  /* Hide Edge/Chrome default password reveal button to prevent duplicate eye icons */
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear,
+  input[type="password"]::-webkit-reveal {
+    display: none !important;
+  }
 }
 
 @layer components {

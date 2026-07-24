@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Package, ClipboardList, CheckCircle2, Bell, Zap, ShieldAlert, AlertCircle, Building2 } from "lucide-react";
+import Link from "next/link";
+import { Package, ClipboardList, CheckCircle2, Bell, Zap, ShieldAlert, AlertCircle, Building2, X } from "lucide-react";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
 import FloatingWhatsAppButton from "@/components/FloatingWhatsAppButton";
 
@@ -27,12 +28,25 @@ interface DashboardData {
     selesai: number;
   };
   recent_activities: DashboardActivity[];
+  active_requests_count: number;
+}
+
+interface ProductRequest {
+  id: number;
+  name: string;
+  category: string;
+  quantity: number;
+  reference_price: number | null;
+  purpose?: string | null;
+  status: "open" | "taken" | "completed" | "cancelled";
 }
 
 export default function DashboardUMKM() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isBannerDismissed, setIsBannerDismissed] = useState(false);
+  const [activeRequests, setActiveRequests] = useState<ProductRequest[]>([]);
 
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
@@ -53,6 +67,13 @@ export default function DashboardUMKM() {
 
       const json = await parseJson<DashboardData>(res);
       setData(json);
+
+      // Fetch active product requests details
+      const requestsRes = await authFetch(`${API_URL}/api/umkm-user/product-requests`);
+      if (requestsRes.ok) {
+        const requestsJson = await parseJson<ProductRequest[]>(requestsRes);
+        setActiveRequests(requestsJson);
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : "Terjadi kesalahan jaringan";
       console.error("Dashboard fetch error", message);
@@ -175,6 +196,73 @@ export default function DashboardUMKM() {
             </div>
           </div>
         </div>
+
+        {/* Active Product Requests Notification Banner */}
+        {activeRequests.length > 0 && !isBannerDismissed && (
+          <div className="bg-amber-50 border border-amber-200 rounded-4xl p-6 shadow-sm hover:shadow-md transition-all duration-300 relative">
+            {/* Header / Title */}
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-amber-200/50">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500 text-white animate-pulse">
+                  <Bell size={20} className="fill-white/20" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-amber-950">Permintaan Produk Baru</h3>
+                  <p className="text-xs text-amber-700 font-medium">Terdapat {activeRequests.length} request aktif dari Admin</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsBannerDismissed(true)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 hover:bg-amber-200 text-amber-800 hover:text-amber-950 transition-colors cursor-pointer"
+                title="Minimalkan Notifikasi"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* List of Requests */}
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+              {activeRequests.map((request) => (
+                <Link
+                  key={request.id}
+                  href={`/umkm/request-produk?id=${request.id}#request-${request.id}`}
+                  className="flex items-center justify-between p-3.5 bg-white hover:bg-amber-100/30 rounded-2xl border border-amber-100 transition-all group/item cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-2 w-2 rounded-full bg-amber-500"></div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900 group-hover/item:text-blue-950 transition-colors">{request.name}</p>
+                      <p className="text-[11px] text-gray-500 font-medium">{request.category} • {request.quantity} pcs</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 group-hover/item:text-blue-800 transition-colors">
+                    <span>Detail</span>
+                    <svg className="w-3.5 h-3.5 transform group-hover/item:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Minimized Notification Bell Button */}
+        {activeRequests.length > 0 && isBannerDismissed && (
+          <div className="flex justify-start">
+            <button
+              onClick={() => setIsBannerDismissed(false)}
+              className="flex items-center gap-3 px-5 py-3 bg-amber-50 hover:bg-amber-100/70 border border-amber-200 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer"
+              title="Tampilkan Permintaan Produk"
+            >
+              <div className="relative">
+                <Bell size={22} className="text-amber-600 fill-amber-600/10" />
+                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-extrabold text-white shadow-sm">
+                  {activeRequests.length}
+                </span>
+              </div>
+              <span className="text-sm font-extrabold text-amber-950">Lihat Permintaan Produk ({activeRequests.length})</span>
+            </button>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

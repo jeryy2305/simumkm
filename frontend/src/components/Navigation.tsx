@@ -22,6 +22,7 @@ export function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (va
     const menuItems = [
         { name: "Dashboard Utama", href: "/admin/dashboard", icon: LayoutDashboard },
         { name: "Manajemen UMKM", href: "/admin/umkm", icon: Users },
+        { name: "Request Produk", href: "/admin/request-produk", icon: ClipboardList },
         { name: "Katalog Produk", href: "/admin/produk", icon: Package },
         { name: "Data Penitipan", href: "/admin/penitipan", icon: ClipboardList },
         { name: "Laporan Aktivitas", href: "/admin/laporan", icon: FileText },

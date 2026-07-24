@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { logout, getAuthUser } from "@/lib/auth";
+import { API_URL, authFetch, getAuthUser, logout, parseJson } from "@/lib/auth";
 import {
     LayoutDashboard,
     Package,
@@ -21,12 +21,25 @@ export default function UmkmLayout({
 }) {
     const pathname = usePathname();
     const [isScrolled, setIsScrolled] = useState(false);
-    const [user, setUser] = useState<AuthUser | null>(null);
+    const [user] = useState<AuthUser | null>(typeof window === "undefined" ? null : getAuthUser());
 
     const [open, setOpen] = useState(false);
+    const [requestCount, setRequestCount] = useState<number>(0);
 
     useEffect(() => {
-        setUser(getAuthUser());
+        const fetchRequestCount = async () => {
+            try {
+                const response = await authFetch(`${API_URL}/api/umkm-user/product-requests`);
+                if (!response.ok) return;
+
+                const requests = await parseJson<Array<Record<string, unknown>>>(response);
+                setRequestCount(requests.length);
+            } catch {
+                setRequestCount(0);
+            }
+        };
+
+        fetchRequestCount();
     }, []);
 
     useEffect(() => {
@@ -42,6 +55,7 @@ export default function UmkmLayout({
     const bottomNavItems = [
         { name: "Beranda", href: "/umkm/dashboard", icon: LayoutDashboard },
         { name: "Produk", href: "/umkm/produk", icon: Package },
+        { name: "Permintaan", href: "/umkm/request-produk", icon: ClipboardList, badge: requestCount },
         { name: "Titipan", href: "/umkm/penitipan", icon: ClipboardList },
     ];
 
@@ -118,11 +132,18 @@ export default function UmkmLayout({
                         <Link
                             key={item.name}
                             href={item.href}
-                            className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
+                            className={`relative flex flex-col items-center justify-center w-full h-full space-y-1 ${
                                 isActive ? "text-secondary" : "text-gray-500 hover:text-gray-700"
                             }`}
                         >
-                            <Icon size={20} className={isActive ? "fill-secondary/20" : ""} />
+                            <div className="relative">
+                                <Icon size={20} className={isActive ? "fill-secondary/20" : ""} />
+                                {typeof item.badge === "number" && item.badge > 0 && (
+                                    <span className="absolute -top-1 -right-2 min-w-5 h-5 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center px-0.5">
+                                        {item.badge}
+                                    </span>
+                                )}
+                            </div>
                             <span className="text-[10px] font-medium">{item.name}</span>
                         </Link>
                     );

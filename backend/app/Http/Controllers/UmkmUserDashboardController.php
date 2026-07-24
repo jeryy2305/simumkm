@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Consignment;
 use App\Models\Product;
 use App\Models\Umkm;
+use App\Models\ProductRequest;
 use Illuminate\Support\Facades\Auth;
 
 class UmkmUserDashboardController extends Controller
@@ -31,6 +32,7 @@ class UmkmUserDashboardController extends Controller
         $totalTitipan = Consignment::where('umkm_id', $umkm->id)->count();
         $produkAktif = Product::where('umkm_id', $umkm->id)->where('status', 'available')->count();
         $selesai = Consignment::where('umkm_id', $umkm->id)->where('status', 'completed')->count();
+        $activeRequestsCount = ProductRequest::where('status', 'open')->count();
 
         $recentConsignments = Consignment::where('umkm_id', $umkm->id)
                                 ->orderBy('created_at', 'desc')
@@ -56,7 +58,8 @@ class UmkmUserDashboardController extends Controller
                 'produk_aktif' => $produkAktif,
                 'selesai' => $selesai,
             ],
-            'recent_activities' => $activities
+            'recent_activities' => $activities,
+            'active_requests_count' => $activeRequestsCount
         ]);
     }
     
