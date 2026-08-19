@@ -1,10 +1,18 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Plus, Search, Package, Tag, Trash2 } from "lucide-react";
+import { Eye, Plus, Search, Package, Tag, Trash2 } from "lucide-react";
 import { Modal } from "@/components/Modal";
 import Toast from "@/components/Toast";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
+
+interface UmkmData {
+    id: number;
+    owner: string;
+    name?: string;
+    phone?: string;
+    address?: string;
+}
 
 interface ProductRequest {
     id: number;
@@ -15,7 +23,12 @@ interface ProductRequest {
     price_offered: number | null;
     purpose?: string | null;
     status: "open" | "taken" | "completed" | "cancelled";
-    taken_by_umkm?: { id: number; owner: string } | null;
+    taken_by_umkm?: UmkmData | null;
+}
+
+interface ProductRequestDetail extends ProductRequest {
+    created_at?: string;
+    takenByUmkm?: UmkmData | null;
 }
 
 interface Notification {
@@ -39,6 +52,10 @@ export default function RequestProdukAdmin() {
     const [error, setError] = useState<string | null>(null);
     const [notification, setNotification] = useState<Notification | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [selectedRequest, setSelectedRequest] = useState<ProductRequestDetail | null>(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [detailError, setDetailError] = useState<string | null>(null);
     const [formData, setFormData] = useState<RequestForm>({
         name: "",
         category: "Makanan",
@@ -86,6 +103,66 @@ export default function RequestProdukAdmin() {
         setRefreshing(true);
         await fetchRequests();
         setRefreshing(false);
+    };
+
+    const formatDate = (value?: string | null) => {
+        if (!value) return "—";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return new Intl.DateTimeFormat("id-ID", {
+            dateStyle: "long",
+            timeStyle: "short",
+        }).format(date);
+    };
+
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case "taken":
+                return "Diambil";
+            case "completed":
+                return "Selesai";
+            case "cancelled":
+                return "Dibatalkan";
+            default:
+                return "Terbuka";
+        }
+    };
+
+    const getStatusClasses = (status: string) => {
+        switch (status) {
+            case "taken":
+                return "bg-blue-100 text-blue-700";
+            case "completed":
+                return "bg-purple-100 text-purple-700";
+            case "cancelled":
+                return "bg-rose-100 text-rose-700";
+            default:
+                return "bg-emerald-100 text-emerald-700";
+        }
+    };
+
+    const handleOpenDetail = async (id: number) => {
+        setIsDetailModalOpen(true);
+        setDetailLoading(true);
+        setDetailError(null);
+        setSelectedRequest(null);
+
+        try {
+            const response = await authFetch(`${API_URL}/api/product-requests/${id}`);
+            if (!response.ok) throw new Error("Gagal memuat detail request");
+            const data = await parseJson<ProductRequestDetail>(response);
+            setSelectedRequest(data);
+        } catch (err: unknown) {
+            setDetailError(err instanceof Error ? err.message : "Terjadi kesalahan saat memuat detail request");
+        } finally {
+            setDetailLoading(false);
+        }
+    };
+
+    const handleCloseDetail = () => {
+        setIsDetailModalOpen(false);
+        setSelectedRequest(null);
+        setDetailError(null);
     };
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -230,19 +307,28 @@ export default function RequestProdukAdmin() {
                                         <td className="py-4 px-6 text-sm font-semibold text-gray-700">{item.reference_price ? `Rp ${Number(item.reference_price).toLocaleString('id-ID')}` : '—'}</td>
                                         <td className="py-4 px-6 text-sm font-semibold text-gray-700">{item.price_offered ? `Rp ${Number(item.price_offered).toLocaleString('id-ID')}` : '—'}</td>
                                         <td className="py-4 px-6">
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${item.status === 'open' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
-                                                {item.status === 'open' ? 'Terbuka' : 'Diambil'}
+                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${getStatusClasses(item.status)}`}>
+                                                {getStatusLabel(item.status)}
                                             </span>
                                         </td>
                                         <td className="py-4 px-6 text-sm font-semibold text-gray-700">{item.taken_by_umkm?.owner || 'Belum'}</td>
                                         <td className="py-4 px-6 text-right">
-                                            <button
-                                                className="px-4 py-2 rounded-2xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all text-sm font-semibold"
-                                                onClick={() => handleDelete(item.id)}
-                                                title="Hapus Request"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button
+                                                    className="px-4 py-2 rounded-2xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all text-sm font-semibold"
+                                                    onClick={() => handleOpenDetail(item.id)}
+                                                    title="Lihat Detail Request"
+                                                >
+                                                    <Eye size={16} />
+                                                </button>
+                                                <button
+                                                    className="px-4 py-2 rounded-2xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all text-sm font-semibold"
+                                                    onClick={() => handleDelete(item.id)}
+                                                    title="Hapus Request"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -262,6 +348,88 @@ export default function RequestProdukAdmin() {
                     </div>
                 )}
             </div>
+
+            <Modal
+                isOpen={isDetailModalOpen}
+                onClose={handleCloseDetail}
+                title="Detail Request Produk"
+            >
+                {detailLoading ? (
+                    <div className="flex items-center justify-center py-10 text-blue-600">
+                        <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mr-3"></div>
+                        <span className="font-semibold">Memuat detail request...</span>
+                    </div>
+                ) : detailError ? (
+                    <div className="rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-600">{detailError}</div>
+                ) : selectedRequest ? (
+                    <div className="space-y-5">
+                        <div className="rounded-3xl border border-blue-100 bg-blue-50/70 p-5">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">Request</p>
+                                    <h3 className="mt-1 text-xl font-extrabold text-gray-900">{selectedRequest.name}</h3>
+                                </div>
+                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${getStatusClasses(selectedRequest.status)}`}>
+                                    {getStatusLabel(selectedRequest.status)}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Nama Produk</p>
+                                <p className="mt-2 text-sm font-semibold text-gray-800">{selectedRequest.name}</p>
+                            </div>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Kategori</p>
+                                <p className="mt-2 text-sm font-semibold text-gray-800">{selectedRequest.category}</p>
+                            </div>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Kuantitas</p>
+                                <p className="mt-2 text-sm font-semibold text-gray-800">{selectedRequest.quantity}</p>
+                            </div>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Budget Referensi</p>
+                                <p className="mt-2 text-sm font-semibold text-gray-800">
+                                    {selectedRequest.reference_price ? `Rp ${Number(selectedRequest.reference_price).toLocaleString("id-ID")}` : "—"}
+                                </p>
+                            </div>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Tujuan Permintaan</p>
+                                <p className="mt-2 text-sm font-semibold text-gray-800">{selectedRequest.purpose || "—"}</p>
+                            </div>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Tanggal Dibuat</p>
+                                <p className="mt-2 text-sm font-semibold text-gray-800">{formatDate(selectedRequest.created_at)}</p>
+                            </div>
+                        </div>
+
+                        <div className="rounded-3xl border border-gray-100 bg-gray-50 p-5">
+                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Data UMKM yang Mengambil</p>
+                            {(() => {
+                                const umkmData = selectedRequest.taken_by_umkm ?? selectedRequest.takenByUmkm;
+                                if (!umkmData) {
+                                    return <p className="mt-3 text-sm font-semibold text-gray-600">Belum ada UMKM yang mengambil request ini.</p>;
+                                }
+
+                                return (
+                                    <div className="mt-4 space-y-3">
+                                        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                                            <p className="text-sm font-extrabold text-gray-900">{umkmData.name}</p>
+                                            <div className="mt-2 space-y-1 text-sm text-gray-600">
+                                                <p><span className="font-semibold text-gray-700">Pemilik:</span> {umkmData.owner}</p>
+                                                {umkmData.phone ? <p><span className="font-semibold text-gray-700">Telepon:</span> {umkmData.phone}</p> : null}
+                                                {umkmData.address ? <p><span className="font-semibold text-gray-700">Alamat:</span> {umkmData.address}</p> : null}
+                                                <p><span className="font-semibold text-gray-700">Harga yang Ditawarkan:</span> {selectedRequest.price_offered ? `Rp ${Number(selectedRequest.price_offered).toLocaleString("id-ID")}` : "—"}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                ) : null}
+            </Modal>
 
             <Modal
                 isOpen={isModalOpen}

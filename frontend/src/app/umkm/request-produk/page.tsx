@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { Search, Package, Tag, CheckCircle2, AlertCircle } from "lucide-react";
+import { Search, Package, Tag, CheckCircle2, AlertCircle, History } from "lucide-react";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
 import Toast from "@/components/Toast";
 import { Modal } from "@/components/Modal";
@@ -13,14 +13,35 @@ interface ProductRequest {
   category: string;
   quantity: number;
   reference_price: number | null;
+  price_offered: number | null;
   purpose?: string | null;
   status: "open" | "taken" | "completed" | "cancelled";
-  taken_by_umkm?: { id: number; owner: string } | null;
+  taken_by_umkm?: { id: number; owner: string; name?: string } | null;
+  created_at?: string;
+  updated_at?: string;
 }
+
+interface RequestHistoryItem {
+  title: string;
+  description: string;
+  timestamp?: string;
+}
+
+interface RequestHistoryResponse {
+  request: ProductRequest;
+  history: RequestHistoryItem[];
+  status_label?: string;
+}
+
+type HistoryListResponse = HistoryListItem[];
 
 interface Notification {
   type: "success" | "error" | "info";
   message: string;
+}
+
+interface HistoryListItem extends ProductRequest {
+  history_status?: string;
 }
 
 export default function RequestProdukUMKM() {
@@ -32,6 +53,11 @@ export default function RequestProdukUMKM() {
   const [selectedRequest, setSelectedRequest] = useState<ProductRequest | null>(null);
   const [offerPrice, setOfferPrice] = useState<number>(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [historyData, setHistoryData] = useState<RequestHistoryResponse | null>(null);
+  const [historyList, setHistoryList] = useState<HistoryListItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   const sortRequestsNewestFirst = (items: ProductRequest[]) => {
     return [...items].sort((a, b) => b.id - a.id);
@@ -101,6 +127,79 @@ export default function RequestProdukUMKM() {
     setIsModalOpen(true);
   };
 
+  const formatDate = (value?: string | null) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat("id-ID", {
+      dateStyle: "long",
+      timeStyle: "short",
+    }).format(date);
+  };
+
+  const getHistoryStatusLabel = (status?: string) => {
+    switch (status) {
+      case "Dalam Penyaluran":
+        return "Dalam Penyaluran";
+      case "Selesai Dititip":
+        return "Selesai Dititip";
+      case "Retur":
+        return "Retur";
+      default:
+        return "Sedang Ditinjau";
+    }
+  };
+
+  const getHistoryStatusClasses = (status?: string) => {
+    switch (status) {
+      case "Dalam Penyaluran":
+        return "bg-amber-100 text-amber-700";
+      case "Selesai Dititip":
+        return "bg-emerald-100 text-emerald-700";
+      case "Retur":
+        return "bg-rose-100 text-rose-700";
+      default:
+        return "bg-amber-100 text-amber-700";
+    }
+  };
+
+  const openHistoryModal = async (request?: ProductRequest) => {
+    setIsHistoryModalOpen(true);
+    setHistoryLoading(true);
+    setHistoryError(null);
+    setHistoryData(null);
+
+    try {
+      if (request) {
+        const response = await authFetch(`${API_URL}/api/umkm-user/product-requests/${request.id}/history`);
+        if (!response.ok) {
+          throw new Error("Gagal memuat riwayat request");
+        }
+        const data = await parseJson<RequestHistoryResponse>(response);
+        setHistoryData(data);
+        return;
+      }
+
+      const response = await authFetch(`${API_URL}/api/umkm-user/product-requests/history`);
+      if (!response.ok) {
+        throw new Error("Gagal memuat history permintaan");
+      }
+      const data = await parseJson<HistoryListResponse>(response);
+      setHistoryList(data);
+    } catch (err: unknown) {
+      setHistoryError(err instanceof Error ? err.message : "Terjadi kesalahan saat memuat history request");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const closeHistoryModal = () => {
+    setIsHistoryModalOpen(false);
+    setHistoryData(null);
+    setHistoryList([]);
+    setHistoryError(null);
+  };
+
   const handleTakeRequest = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedRequest) return;
@@ -153,6 +252,13 @@ export default function RequestProdukUMKM() {
           <h1 className="text-3xl font-extrabold text-blue-950 mb-2">Permintaan Produk</h1>
           <p className="text-gray-500 text-sm md:text-base">Lihat request produk dari admin, tawarkan harga, dan hasilkan produk baru secara otomatis.</p>
         </div>
+        <button
+          type="button"
+          onClick={() => void openHistoryModal()}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 transition-all hover:bg-slate-200 active:scale-95"
+        >
+          <History size={16} /> History Permintaan
+        </button>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -300,6 +406,100 @@ export default function RequestProdukUMKM() {
           </>
         )}
       </div>
+
+      <Modal isOpen={isHistoryModalOpen} onClose={closeHistoryModal} title="History Permintaan">
+        {historyLoading ? (
+          <div className="flex items-center justify-center py-10 text-blue-600">
+            <div className="mr-3 h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600"></div>
+            <span className="font-semibold">Memuat history request...</span>
+          </div>
+        ) : historyError ? (
+          <div className="rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-600">{historyError}</div>
+        ) : historyData ? (
+          <div className="space-y-5">
+            <div className="rounded-3xl border border-blue-100 bg-blue-50/70 p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">Request</p>
+                  <h3 className="mt-1 text-xl font-extrabold text-gray-900">{historyData.request.name}</h3>
+                </div>
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${getHistoryStatusClasses(historyData.status_label)}`}>
+                  {getHistoryStatusLabel(historyData.status_label)}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Nama Produk</p>
+                <p className="mt-2 text-sm font-semibold text-gray-800">{historyData.request.name}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Jumlah</p>
+                <p className="mt-2 text-sm font-semibold text-gray-800">{historyData.request.quantity}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Harga yang Ditawarkan</p>
+                <p className="mt-2 text-sm font-semibold text-gray-800">
+                  {historyData.request.price_offered ? `Rp ${Number(historyData.request.price_offered).toLocaleString("id-ID")}` : "—"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Status Request</p>
+                <p className="mt-2 text-sm font-semibold text-gray-800">{getHistoryStatusLabel(historyData.status_label)}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Tanggal Request Dibuat</p>
+                <p className="mt-2 text-sm font-semibold text-gray-800">{formatDate(historyData.request.created_at)}</p>
+              </div>
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Tanggal Request Diambil</p>
+                <p className="mt-2 text-sm font-semibold text-gray-800">{formatDate(historyData.request.updated_at)}</p>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-gray-100 bg-gray-50 p-5">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Perubahan Status / Progress</p>
+              <div className="mt-4 space-y-3">
+                {historyData.history.map((item, index) => (
+                  <div key={`${item.title}-${index}`} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-extrabold text-gray-900">{item.title}</p>
+                        <p className="mt-1 text-sm text-gray-600">{item.description}</p>
+                      </div>
+                      <span className="text-xs font-semibold text-gray-400">{formatDate(item.timestamp)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : historyList.length > 0 ? (
+          <div className="space-y-3">
+            {historyList.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => void openHistoryModal(item)}
+                className="flex w-full items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all hover:border-blue-200 hover:bg-blue-50"
+              >
+                <div>
+                  <p className="text-sm font-extrabold text-gray-900">{item.name}</p>
+                  <p className="mt-1 text-sm text-gray-500">{item.category} • {item.quantity} unit</p>
+                </div>
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${getHistoryStatusClasses(item.history_status)}`}>
+                  {getHistoryStatusLabel(item.history_status)}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl bg-slate-50 p-5 text-sm font-semibold text-slate-600">
+            Belum ada request yang pernah Anda ambil.
+          </div>
+        )}
+      </Modal>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Ambil Request Produk">
         <form onSubmit={handleTakeRequest} className="space-y-5 px-1 py-2">

@@ -28,6 +28,8 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::get('/umkm-user/products', [UmkmUserDashboardController::class, 'products']);
     Route::get('/umkm-user/consignments', [UmkmUserDashboardController::class, 'consignments']);
     Route::get('/umkm-user/product-requests', [ProductRequestController::class, 'userIndex']);
+    Route::get('/umkm-user/product-requests/history', [ProductRequestController::class, 'userHistoryIndex']);
+    Route::get('/umkm-user/product-requests/{productRequest}/history', [ProductRequestController::class, 'history']);
     Route::post('/umkm-user/product-requests/{productRequest}/take', [ProductRequestController::class, 'take']);
 
     // Profile Routes
