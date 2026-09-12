@@ -1,30 +1,44 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Check, X, Search, Trash2, Edit, ClipboardList, MapPin, Package, Building2, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Search, Trash2, Edit, ClipboardList, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { Modal } from "@/components/Modal";
 import Toast from "@/components/Toast";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
+import { Hotel, Umkm, Product, Consignment, ConsignmentFormData } from "@/lib/types";
+
+type FormData = ConsignmentFormData;
+type Status = "active" | "completed" | "cancelled";
+
+function isStatus(value: string): value is Status {
+  return ["active", "completed", "cancelled"].includes(value);
+}
 
 export default function DataPenitipan() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filterOwner, setFilterOwner] = useState("");
-    const [consignments, setConsignments] = useState<any[]>([]);
-    const [products, setProducts] = useState<any[]>([]);
-    const [umkms, setUmkms] = useState<any[]>([]);
+    const [consignments, setConsignments] = useState<Consignment[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
+    const [umkms, setUmkms] = useState<Umkm[]>([]);
+    const [hotels, setHotels] = useState<Hotel[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [notification, setNotification] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
 
-    const activeUmkms = umkms.filter(u => u.status === 'active');
-    const availableProducts = products.filter(p => p.status === 'available' && p.umkm?.status === 'active');
+    const activeUmkms = umkms.filter((u) => u.status === 'active');
+    const availableProducts = products.filter((p) => p.status === 'available' && p.umkm?.status === 'active');
+    const verifiedHotels = hotels.filter((h) => h.verified === true);
+    const getUmkmDisplayId = (umkmId?: number) => {
+        const index = umkms.findIndex((umkm) => umkm.id === umkmId);
+        return index >= 0 ? index + 1 : '-';
+    };
 
     // CRUD States
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [editItem, setEditItem] = useState<any>(null);
+    const [editItem, setEditItem] = useState<Consignment | null>(null);
     const [selectedProductInfo, setSelectedProductInfo] = useState<{ price: number | null; quantity: number | null }>({ price: null, quantity: null });
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<FormData>({
         company: '',
         product_id: '',
         umkm_id: '',
@@ -47,20 +61,22 @@ export default function DataPenitipan() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [consRes, prodRes, umkmRes] = await Promise.all([
+            const [consRes, prodRes, umkmRes, hotelRes] = await Promise.all([
                 authFetch(`${API_URL}/api/consignments`),
                 authFetch(`${API_URL}/api/products`),
-                authFetch(`${API_URL}/api/umkms`)
+                authFetch(`${API_URL}/api/umkms`),
+                authFetch(`${API_URL}/api/hotels`)
             ]);
 
-            if (!consRes.ok || !prodRes.ok || !umkmRes.ok) throw new Error('Failed to fetch data');
+            if (!consRes.ok || !prodRes.ok || !umkmRes.ok || !hotelRes.ok) throw new Error('Failed to fetch data');
 
-            const consignmentData = await parseJson<any[]>(consRes);
+            const consignmentData = await parseJson<Consignment[]>(consRes);
             setConsignments(consignmentData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
-            setProducts(await parseJson(prodRes));
-            setUmkms(await parseJson(umkmRes));
-        } catch (err: any) {
-            setError(err.message);
+            setProducts(await parseJson<Product[]>(prodRes));
+            setUmkms(await parseJson<Umkm[]>(umkmRes));
+            setHotels(await parseJson<Hotel[]>(hotelRes));
+        } catch (error: unknown) {
+            setError(error instanceof Error ? error.message : 'Failed to fetch data');
         } finally {
             setLoading(false);
         }
@@ -70,10 +86,12 @@ export default function DataPenitipan() {
         try {
             const response = await authFetch(`${API_URL}/api/consignments`);
             if (response.ok) {
-                const data = await parseJson<any[]>(response);
+                const data = await parseJson<Consignment[]>(response);
                 setConsignments(data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
             }
-        } catch (err) { }
+        } catch {
+            // ignore refresh failure while preserving current list
+        }
     };
 
     const filteredData = consignments.filter(item => {
@@ -96,7 +114,7 @@ export default function DataPenitipan() {
         setIsModalOpen(true);
     };
 
-    const handleEditClick = (item: any) => {
+    const handleEditClick = (item: Consignment) => {
         const formattedDate = item.start_date ? new Date(item.start_date).toISOString().split('T')[0] : '';
         setEditItem({
             ...item,
@@ -123,8 +141,9 @@ export default function DataPenitipan() {
             await fetchConsignments();
             setIsEditModalOpen(false);
             setNotification({ type: 'success', message: 'Data penitipan berhasil diperbarui.' });
-        } catch (err: any) {
-            setNotification({ type: 'error', message: err.message });
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Gagal mengupdate data';
+            setNotification({ type: 'error', message });
         }
     };
 
@@ -133,10 +152,11 @@ export default function DataPenitipan() {
         try {
             const response = await authFetch(`${API_URL}/api/consignments/${id}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Gagal menghapus data');
-            setConsignments(consignments.filter(c => c.id !== id));
+            setConsignments((current) => current.filter((c) => c.id !== id));
             setNotification({ type: 'success', message: 'Arsip penitipan berhasil dihapus.' });
-        } catch (err: any) {
-            setNotification({ type: 'error', message: err.message });
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Gagal menghapus data';
+            setNotification({ type: 'error', message });
         }
     };
 
@@ -151,8 +171,9 @@ export default function DataPenitipan() {
             await fetchConsignments();
             setIsModalOpen(false);
             setNotification({ type: 'success', message: 'Data penitipan berhasil disimpan.' });
-        } catch (err: any) {
-            setNotification({ type: 'error', message: err.message });
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Gagal menyimpan data';
+            setNotification({ type: 'error', message });
         }
     };
 
@@ -167,7 +188,7 @@ export default function DataPenitipan() {
             quantity: selectedProd ? selectedProd.quantity : 0
         });
         setSelectedProductInfo({
-            price: selectedProd ? selectedProd.price : null,
+            price: selectedProd ? (Number(selectedProd.price) || null) : null,
             quantity: selectedProd ? selectedProd.quantity : null
         });
     };
@@ -197,7 +218,7 @@ export default function DataPenitipan() {
                     </div>
                     <input
                         type="text"
-                        placeholder="Cari ID Titipan, Perusahaan Tujuan, atau Produk..."
+                        placeholder="Cari ID Mitra, Perusahaan Tujuan, atau Produk..."
                         className="w-full bg-transparent px-2 py-3 outline-none text-sm font-medium text-gray-800"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -210,8 +231,8 @@ export default function DataPenitipan() {
                         onChange={(e) => setFilterOwner(e.target.value)}
                     >
                         <option value="">Filter Berdasarkan UMKM...</option>
-                        {Array.from(new Set(activeUmkms.map(u => u.owner))).map(owner => (
-                            <option key={owner as string} value={owner as string}>{owner as string}</option>
+                        {Array.from(new Set(activeUmkms.map((u) => u.owner))).map((owner) => (
+                            <option key={owner} value={owner}>{owner}</option>
                         ))}
                     </select>
                 </div>
@@ -231,7 +252,8 @@ export default function DataPenitipan() {
                         <table className="w-full text-left whitespace-nowrap">
                             <thead>
                                 <tr className="bg-gray-50/80">
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Flow ID / Mitra</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">ID</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Mitra</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Alokasi Tujuan</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Nama Produk</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Harga</th>
@@ -243,23 +265,17 @@ export default function DataPenitipan() {
                             <tbody className="divide-y divide-gray-50">
                                 {filteredData.map((item) => (
                                     <tr key={item.id} className="hover:bg-amber-50/30 transition-colors group">
-                                        <td className="py-5 px-6">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded w-max mb-1.5 uppercase tracking-wider">TX-{item.id}</span>
-                                                <span className="text-sm font-extrabold text-blue-950 group-hover:text-blue-700 transition-colors">{item.umkm?.owner || 'Tanpa Pemilik'}</span>
-                                            </div>
+                                        <td className="py-5 px-6 text-sm font-bold text-amber-600">
+                                            #{getUmkmDisplayId(item.umkm_id)}
                                         </td>
                                         <td className="py-5 px-6">
-                                            <div className="flex items-center gap-2">
-                                                <Building2 size={14} className="text-blue-400" />
-                                                <span className="text-sm font-extrabold text-gray-800">{item.company || '-'}</span>
-                                            </div>
+                                            <span className="text-sm font-extrabold text-blue-950 group-hover:text-blue-700 transition-colors">{item.umkm?.owner || 'Tanpa Pemilik'}</span>
                                         </td>
                                         <td className="py-5 px-6">
-                                            <div className="flex items-center gap-2">
-                                                <Package size={14} className="text-gray-400" />
-                                                <span className="text-sm font-semibold text-gray-700">{item.product?.name || 'Produk Unknown'}</span>
-                                            </div>
+                                            <span className="text-sm font-extrabold text-gray-800">{item.company || '-'}</span>
+                                        </td>
+                                        <td className="py-5 px-6">
+                                            <span className="text-sm font-semibold text-gray-700">{item.product?.name || 'Produk Unknown'}</span>
                                         </td>
                                         <td className="py-5 px-6">
                                             {item.product?.price != null ? (
@@ -288,7 +304,7 @@ export default function DataPenitipan() {
                                                 {item.status === 'completed' && <CheckCircle2 size={12} className="shrink-0" />}
                                                 {item.status === 'cancelled' && <XCircle size={12} className="shrink-0" />}
                                                 <span className="text-[10px] font-bold uppercase tracking-wider">
-                                                    {item.status === "active" ? "Masuk" : item.status === "completed" ? "Keluar" : "Retur"}
+                                                    {item.status === "active" ? "Masuk" : item.status === "completed" ? "Selesai" : "Retur"}
                                                 </span>
                                             </div>
                                         </td>
@@ -314,7 +330,7 @@ export default function DataPenitipan() {
                                 ))}
                                 {filteredData.length === 0 && !loading && (
                                     <tr>
-                                        <td colSpan={7} className="py-20 text-center">
+                                        <td colSpan={8} className="py-20 text-center">
                                             <div className="flex flex-col items-center">
                                                 <ClipboardList size={40} className="text-gray-200 mb-4" />
                                                 <p className="font-extrabold text-gray-500">Tidak Log Penitipan</p>
@@ -383,11 +399,11 @@ export default function DataPenitipan() {
                             onChange={e => setFormData({ ...formData, company: e.target.value })}
                         >
                             <option value="" disabled>Pilih Hotel Tujuan...</option>
-                            <option value="Hotel Aston Pelita">Hotel Aston Pelita</option>
-                            <option value="Hotel Best Western Premier">Hotel Best Western Premier</option>
-                            <option value="Hotel Harmoni Suites">Hotel Harmoni Suites</option>
-                            <option value="Hotel Marriot">Hotel Marriot</option>
-                            <option value="Hotel Radisson">Hotel Radisson</option>
+                            {verifiedHotels.length > 0 ? verifiedHotels.map(hotel => (
+                                <option key={hotel.id} value={hotel.name}>{hotel.name}</option>
+                            )) : (
+                                <option value="" disabled>Tidak ada hotel terverifikasi</option>
+                            )}
                         </select>
                     </div>
                     <div>
@@ -420,11 +436,11 @@ export default function DataPenitipan() {
                                 onChange={e => setEditItem({ ...editItem, company: e.target.value })}
                             >
                                 <option value="" disabled>Pilih Hotel Tujuan...</option>
-                                <option value="Hotel Aston Pelita">Hotel Aston Pelita</option>
-                                <option value="Hotel Best Western Premier">Hotel Best Western Premier</option>
-                                <option value="Hotel Harmoni Suites">Hotel Harmoni Suites</option>
-                                <option value="Hotel Marriot">Hotel Marriot</option>
-                                <option value="Hotel Radisson">Hotel Radisson</option>
+                                {verifiedHotels.length > 0 ? verifiedHotels.map(hotel => (
+                                    <option key={hotel.id} value={hotel.name}>{hotel.name}</option>
+                                )) : (
+                                    <option value="" disabled>Tidak ada hotel terverifikasi</option>
+                                )}
                             </select>
                         </div>
                         <div>
@@ -432,10 +448,15 @@ export default function DataPenitipan() {
                             <select
                                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer"
                                 value={editItem.status}
-                                onChange={(e) => setEditItem({ ...editItem, status: e.target.value })}
+                                onChange={(e) => {
+                                    const status = e.target.value;
+                                    if (isStatus(status)) {
+                                        setEditItem({ ...editItem, status });
+                                    }
+                                }}
                             >
                                 <option value="active">Masuk</option>
-                                <option value="completed">Keluar</option>
+                                <option value="completed">keluar </option>
                                 <option value="cancelled">Di-Retur / Batal</option>
                             </select>
                         </div>

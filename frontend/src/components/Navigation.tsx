@@ -13,7 +13,8 @@ import {
     LogOut,
     Menu,
     X,
-    Building2
+    Building2,
+    Hotel
 } from "lucide-react";
 
 export function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (val: boolean) => void }) {
@@ -22,6 +23,7 @@ export function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (va
     const menuItems = [
         { name: "Dashboard Utama", href: "/admin/dashboard", icon: LayoutDashboard },
         { name: "Manajemen UMKM", href: "/admin/umkm", icon: Users },
+        { name: "Data Hotel", href: "/admin/hotel", icon: Hotel },
         { name: "Request Produk", href: "/admin/request-produk", icon: ClipboardList },
         { name: "Katalog Produk", href: "/admin/produk", icon: Package },
         { name: "Data Penitipan", href: "/admin/penitipan", icon: ClipboardList },
@@ -127,11 +129,12 @@ export function Navbar({ setIsOpen }: { setIsOpen: (val: boolean) => void }) {
                         <p className="text-sm font-extrabold text-gray-800 leading-tight">Admin Pusat</p>
                         <p className="text-[10px] uppercase tracking-[0.2em] text-blue-600 font-bold">Administrator</p>
                     </div>
-                    <img
-                        className={`w-10 h-10 rounded-full border-2 border-white transition-all duration-300 group-hover:scale-105 ${scrolled ? 'shadow-md' : 'shadow-sm'}`}
-                        src="https://ui-avatars.com/api/?name=Admin+Pusat&background=1e3a8a&color=fcd34d&bold=true"
-                        alt="Admin Avatar"
-                    />
+                    <div
+                        className={`w-10 h-10 rounded-full border-2 border-white bg-blue-900 text-amber-300 flex items-center justify-center text-xs font-extrabold transition-all duration-300 group-hover:scale-105 ${scrolled ? 'shadow-md' : 'shadow-sm'}`}
+                        aria-label="Admin Pusat"
+                    >
+                        AP
+                    </div>
                 </div>
             </div>
         </header>

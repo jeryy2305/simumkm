@@ -14,28 +14,17 @@ export default function ProdukUMKM() {
 
   const fetchProducts = async () => {
     try {
-      // Cek status terlebih dahulu
-      try {
-        const dashRes = await authFetch(`${API_URL}/api/umkm-user/dashboard`);
-        if (dashRes.ok) {
-          const dashData = await parseJson<any>(dashRes);
-          if (dashData?.umkm?.status === "inactive") {
-            setUmkmStatus("inactive");
-            setLoading(false);
-            return;
-          }
-        }
-      } catch (e) { }
-
       const res = await authFetch(`${API_URL}/api/umkm-user/products`);
       if (res.ok) {
         const data = await parseJson<any[]>(res);
-        console.log("Products API Response:", data); // DEBUG
         setProducts(data);
       } else {
         let errorMessage = res.statusText;
         try {
-          const errorData = await parseJson<{ message?: string }>(res);
+          const errorData = await parseJson<{ message?: string; status?: string }>(res);
+          if (errorData?.status === "inactive") {
+            setUmkmStatus("inactive");
+          }
           errorMessage = errorData?.message || errorMessage;
         } catch (parseError) {
           // If not JSON, keep status text
@@ -53,11 +42,6 @@ export default function ProdukUMKM() {
 
   useEffect(() => {
     fetchProducts();
-    
-    // Auto-refresh data setiap 2 detik
-    const interval = setInterval(fetchProducts, 2000);
-    
-    return () => clearInterval(interval);
   }, []);
 
   if (umkmStatus === "inactive") {

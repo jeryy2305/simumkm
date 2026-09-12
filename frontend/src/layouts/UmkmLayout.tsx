@@ -24,15 +24,14 @@ export default function UmkmLayout({
     const [user] = useState<AuthUser | null>(typeof window === "undefined" ? null : getAuthUser());
 
     const [open, setOpen] = useState(false);
-    const [requestCount, setRequestCount] = useState<number>(0);
+    const [requestCount, setRequestCount] = useState(0);
 
     useEffect(() => {
         const fetchRequestCount = async () => {
             try {
                 const response = await authFetch(`${API_URL}/api/umkm-user/product-requests`);
                 if (!response.ok) return;
-
-                const requests = await parseJson<Array<Record<string, unknown>>>(response);
+                const requests = await parseJson<Array<unknown>>(response);
                 setRequestCount(requests.length);
             } catch {
                 setRequestCount(0);
@@ -41,7 +40,6 @@ export default function UmkmLayout({
 
         fetchRequestCount();
     }, []);
-
     useEffect(() => {
         const handleClickOutside = () => setOpen(false);
         if (open) document.addEventListener("click", handleClickOutside);
@@ -56,7 +54,7 @@ export default function UmkmLayout({
         { name: "Beranda", href: "/umkm/dashboard", icon: LayoutDashboard },
         { name: "Produk", href: "/umkm/produk", icon: Package },
         { name: "Permintaan", href: "/umkm/request-produk", icon: ClipboardList, badge: requestCount },
-        { name: "Titipan", href: "/umkm/penitipan", icon: ClipboardList },
+        { name: "Titipan", href: "/umkm/penitipan", icon: Package },
     ];
 
     return (

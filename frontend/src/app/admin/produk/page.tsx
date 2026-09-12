@@ -5,22 +5,32 @@ import { Plus, Edit, Trash2, Search, PackageOpen, Tag, Store, AlertTriangle, Loc
 import { Modal } from "@/components/Modal";
 import Toast from "@/components/Toast";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
+import { Product, Umkm, Notification } from "@/lib/types";
+
+interface ProductFormData {
+    name: string;
+    category: string;
+    price: number;
+    quantity: number;
+    status: "available" | "unavailable";
+    umkm_id: string | number;
+}
 
 export default function DataProduk() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filterOwner, setFilterOwner] = useState("");
-    const [products, setProducts] = useState<any[]>([]);
-    const [umkmsList, setUmkmsList] = useState<any[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
+    const [umkmsList, setUmkmsList] = useState<Umkm[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [notification, setNotification] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
+    const [notification, setNotification] = useState<Notification | null>(null);
 
-    const activeUmkms = umkmsList.filter(u => u.status === 'active');
+    const activeUmkms = umkmsList.filter((u) => u.status === 'active');
 
     // CRUD States
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editItem, setEditItem] = useState<any>(null);
-    const [formData, setFormData] = useState({
+    const [editItem, setEditItem] = useState<Product | null>(null);
+    const [formData, setFormData] = useState<ProductFormData>({
         name: '',
         category: 'Makanan',
         price: 0,
@@ -131,8 +141,8 @@ export default function DataProduk() {
     const filteredData = products.filter(item => {
         const isActiveUmkm = item.umkm?.status === "active";
         const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.umkm?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.category.toLowerCase().includes(searchTerm.toLowerCase());
+            item.umkm?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.category?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesOwner = filterOwner === "" || (item.umkm && item.umkm.owner === filterOwner);
         return isActiveUmkm && matchesSearch && matchesOwner;
     });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ClipboardList, MapPin, Package, ChevronRight, CheckCircle2, Clock, XCircle, AlertCircle } from "lucide-react";
+import { ClipboardList, MapPin, Package, XCircle, AlertCircle } from "lucide-react";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
 import FloatingWhatsAppButton from "@/components/FloatingWhatsAppButton";
 
@@ -11,7 +11,6 @@ export default function PenitipanUMKM() {
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('active');
   const [umkmStatus, setUmkmStatus] = useState<string | null>(null);
-  const [currentUmkm, setCurrentUmkm] = useState<any>(null);
   
 
   useEffect(() => {
@@ -21,7 +20,6 @@ export default function PenitipanUMKM() {
           const dashRes = await authFetch(`${API_URL}/api/umkm-user/dashboard`);
           if (dashRes.ok) {
             const dashData = await parseJson<any>(dashRes);
-            setCurrentUmkm(dashData.umkm ?? null);
             if (dashData?.umkm?.status === "inactive") {
               setUmkmStatus("inactive");
               setLoading(false);

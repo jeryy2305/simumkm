@@ -1,30 +1,9 @@
 "use client";
 
-import { Users, Package, ClipboardList, TrendingUp, ArrowUpRight, Activity as ActivityIcon } from "lucide-react";
+import { Users, Package, ClipboardList, TrendingUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
-
-interface Stat {
-    title: string;
-    value: string;
-    icon: any;
-}
-
-interface Activity {
-    date: string;
-    type: string;
-    partner: string;
-    product: string;
-    qty: number;
-    status: string;
-}
-
-interface AdminDashboardStats {
-    total_umkm: number;
-    total_products: number;
-    barang_masuk_hari_ini: number;
-    total_nilai_distribusi: number;
-}
+import { Stat, Activity, AdminDashboardStats } from "@/lib/types";
 
 export default function AdminDashboard() {
     const [stats, setStats] = useState<Stat[]>([]);
@@ -78,15 +57,8 @@ export default function AdminDashboard() {
         <div className="space-y-8 pb-20 font-sans text-gray-800">
             {/* Header Widget */}
             <div className="bg-linear-to-r from-blue-950 via-blue-900 to-blue-800 rounded-4xl p-8 md:p-10 text-white shadow-2xl relative overflow-hidden group mb-8">
-                <div className="absolute -right-20 -top-20 w-80 h-80 bg-linear-to-br from-amber-400 to-amber-600 rounded-full blur-[80px] opacity-30 group-hover:opacity-40 transition-opacity duration-700 pointer-events-none"></div>
-                <div className="absolute left-10 -bottom-20 w-60 h-60 bg-blue-600 rounded-full blur-[60px] opacity-40 pointer-events-none"></div>
-
                 <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                     <div>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm border border-white/10 mb-4">
-                            <ActivityIcon size={14} className="text-amber-400" />
-                            <span className="text-xs font-bold text-blue-100 tracking-wider uppercase">Live Activity</span>
-                        </div>
                         <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">Pusat Kendali Operasional</h1>
                         <p className="text-base text-blue-100/90 max-w-2xl leading-relaxed">
                             Ringkasan komprehensif performa jaringan mitra UMKM, pergerakan barang, dan siklus logistik hari ini.
@@ -127,9 +99,6 @@ export default function AdminDashboard() {
                         <h2 className="text-xl font-extrabold text-blue-950">Aktivitas Titipan Terbaru</h2>
                         <p className="text-sm text-gray-500 mt-1">Lacak pencatatan masuk, keluar, atau pembatalan barang secara real-time.</p>
                     </div>
-                    <button className="hidden sm:inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 hover:text-blue-800 transition-all hover:gap-2 active:scale-95 cursor-pointer">
-                        Lihat Semua <ArrowUpRight size={16} />
-                    </button>
                 </div>
 
                 <div className="overflow-x-auto">

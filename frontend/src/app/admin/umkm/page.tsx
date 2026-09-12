@@ -212,9 +212,9 @@ export default function DataUMKM() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {filteredData.map((item) => (
+                                {filteredData.map((item, index) => (
                                     <tr key={item.id} className="hover:bg-blue-50/40 transition-colors group">
-                                        <td className="py-4 px-6 text-sm font-bold text-gray-400">#{item.id}</td>
+                                        <td className="py-4 px-6 text-sm font-bold text-gray-400">#{index + 1}</td>
                                         <td className="py-4 px-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">

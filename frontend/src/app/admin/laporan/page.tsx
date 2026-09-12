@@ -6,13 +6,6 @@ import { API_URL, authFetch, parseJson } from "@/lib/auth";
 import { Modal } from "@/components/Modal";
 import { Eye } from "lucide-react";
 
-const initialSummaryData = [
-    { label: "Barang Masuk", value: "0", icon: Package, color: "text-blue-500", bg: "bg-blue-100" },
-    { label: "Barang Keluar", value: "0", icon: TrendingUp, color: "text-green-500", bg: "bg-green-100" },
-    { label: "Nilai Distribusi", value: "Rp 0", icon: BarChart3, color: "text-amber-500", bg: "bg-amber-100" },
-    { label: "UMKM Aktif", value: "0", icon: Users, color: "text-indigo-500", bg: "bg-indigo-100" },
-];
-
 type MonthlyRow = {
     owner: string;
     tanggal: string;
@@ -22,6 +15,13 @@ type MonthlyRow = {
     totalRawValue: number;
     items: any[];
 };
+
+const initialSummaryData = [
+    { label: "Total Barang Masuk", value: "0", icon: Package, color: "text-blue-600", bg: "bg-blue-100" },
+    { label: "Total Barang Keluar", value: "0", icon: TrendingUp, color: "text-green-600", bg: "bg-green-100" },
+    { label: "Total Nilai Distribusi", value: "Rp 0", icon: BarChart3, color: "text-amber-500", bg: "bg-amber-100" },
+    { label: "Jejaring UMKM Aktif", value: "0", icon: Users, color: "text-purple-600", bg: "bg-purple-100" },
+];
 
 const initialMonthlyData: MonthlyRow[] = [
     { owner: "-", tanggal: "-", masuk: 0, keluar: 0, value: "Rp 0", totalRawValue: 0, items: [] as any[] },

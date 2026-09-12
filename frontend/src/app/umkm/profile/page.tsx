@@ -3,17 +3,7 @@
 import { useState, useEffect } from "react";
 import { API_URL, authFetch, parseJson, getAuthUser, setAuthUser } from "@/lib/auth";
 import { User, Check, AlertCircle, Eye, EyeOff } from "lucide-react";
-
-interface ProfileUser {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-  created_at: string;
-  umkm?: {
-    address?: string;
-  };
-}
+import { ProfileUser } from "@/lib/types";
 
 export default function ProfilePage() {
   const currentUser = getAuthUser();
