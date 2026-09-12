@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use App\Models\Consignment;
 use App\Models\Product;
 use App\Models\Umkm;
-use App\Models\ProductRequest;
 use Illuminate\Support\Facades\Auth;
 
 class UmkmUserDashboardController extends Controller
@@ -32,9 +31,9 @@ class UmkmUserDashboardController extends Controller
         $totalTitipan = Consignment::where('umkm_id', $umkm->id)->count();
         $produkAktif = Product::where('umkm_id', $umkm->id)->where('status', 'available')->count();
         $selesai = Consignment::where('umkm_id', $umkm->id)->where('status', 'completed')->count();
-        $activeRequestsCount = ProductRequest::where('status', 'open')->count();
 
-        $recentConsignments = Consignment::where('umkm_id', $umkm->id)
+        $recentConsignments = Consignment::with('product:id,name,quantity')
+                    ->where('umkm_id', $umkm->id)
                                 ->orderBy('created_at', 'desc')
                                 ->take(5)
                                 ->get();
@@ -58,8 +57,7 @@ class UmkmUserDashboardController extends Controller
                 'produk_aktif' => $produkAktif,
                 'selesai' => $selesai,
             ],
-            'recent_activities' => $activities,
-            'active_requests_count' => $activeRequestsCount
+            'recent_activities' => $activities
         ]);
     }
     
@@ -76,24 +74,29 @@ class UmkmUserDashboardController extends Controller
             return response()->json(['message' => 'UMKM profile not found'], 404);
         }
 
+        if ($umkm->status !== 'active') {
+            return response()->json([
+                'message' => 'Akun UMKM sedang dalam peninjauan.',
+                'status' => 'inactive',
+            ], 403);
+        }
+
         $products = Product::where('umkm_id', $umkm->id)
             ->select('id', 'name', 'category', 'price', 'status', 'quantity', 'umkm_id', 'created_at', 'updated_at')
             ->orderBy('created_at', 'desc')
             ->get();
+
+        $consignmentStatuses = Consignment::whereIn('product_id', $products->pluck('id'))
+            ->whereIn('status', ['active', 'cancelled', 'completed'])
+            ->get(['product_id', 'status'])
+            ->groupBy('product_id');
         
         // Add consignment-driven status info for each product so UI shows correct state
-        $productsWithStatus = $products->map(function ($product) {
-            $hasActive = Consignment::where('product_id', $product->id)
-                ->where('status', 'active')
-                ->exists();
-
-            $hasCancelled = Consignment::where('product_id', $product->id)
-                ->where('status', 'cancelled')
-                ->exists();
-
-            $hasCompleted = Consignment::where('product_id', $product->id)
-                ->where('status', 'completed')
-                ->exists();
+        $productsWithStatus = $products->map(function ($product) use ($consignmentStatuses) {
+            $statuses = $consignmentStatuses->get($product->id, collect())->pluck('status');
+            $hasActive = $statuses->contains('active');
+            $hasCancelled = $statuses->contains('cancelled');
+            $hasCompleted = $statuses->contains('completed');
 
             // Preserve original catalog quantity
             $catalogQty = $product->quantity;

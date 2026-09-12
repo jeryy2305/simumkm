@@ -5,8 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Umkm;
 use App\Models\Product;
 use App\Models\Consignment;
-use Illuminate\Http\Request;
-use Carbon\Carbon;
 
 class AdminDashboardController extends Controller
 {
@@ -16,32 +14,25 @@ class AdminDashboardController extends Controller
         $totalProducts = Product::whereHas('umkm', function ($query) {
             $query->where('status', 'active');
         })->count();
-        $barangMasukHariIni = Consignment::where('status', 'active')
-            ->whereHas('umkm', function ($query) {
-                $query->where('status', 'active');
-            })
-            ->with('product')
-            ->get()
-            ->sum(function ($consignment) {
-                return $consignment->product?->quantity ?? 0;
-            });
+        $barangMasukHariIni = Consignment::where('consignments.status', 'active')
+            ->join('products', 'consignments.product_id', '=', 'products.id')
+            ->join('umkms', 'consignments.umkm_id', '=', 'umkms.id')
+            ->where('umkms.status', 'active')
+            ->sum('products.quantity');
 
-        $totalNilaiDistribusi = Consignment::with('product')
-            ->where('status', 'completed')
-            ->whereHas('umkm', function ($query) {
-                $query->where('status', 'active');
-            })
-            ->get()
-            ->sum(function ($consignment) {
-                if (!$consignment->product) return 0;
-                return $consignment->product->quantity * $consignment->product->price;
-            });
+        $totalNilaiDistribusi = Consignment::query()
+            ->join('products', 'consignments.product_id', '=', 'products.id')
+            ->join('umkms', 'consignments.umkm_id', '=', 'umkms.id')
+            ->where('consignments.status', 'completed')
+            ->where('umkms.status', 'active')
+            ->selectRaw('COALESCE(SUM(products.quantity * products.price), 0) as total')
+            ->value('total');
 
         return response()->json([
             'total_umkm' => $totalUmkm,
             'total_products' => $totalProducts,
             'barang_masuk_hari_ini' => $barangMasukHariIni,
-            'total_nilai_distribusi' => $totalNilaiDistribusi,
+            'total_nilai_distribusi' => (float) $totalNilaiDistribusi,
         ]);
     }
 

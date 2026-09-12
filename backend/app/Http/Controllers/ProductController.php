@@ -12,11 +12,13 @@ class ProductController extends Controller
     {
         $products = Product::with('umkm')->orderBy('created_at', 'desc')->get();
 
-        // Append flag indicating whether the product has a completed consignment ("Keluar")
-        $products->each(function ($product) {
-            $product->has_completed_consignment = Consignment::where('product_id', $product->id)
-                ->where('status', 'completed')
-                ->exists();
+        $completedProductIds = Consignment::whereIn('product_id', $products->pluck('id'))
+            ->where('status', 'completed')
+            ->pluck('product_id')
+            ->flip();
+
+        $products->each(function ($product) use ($completedProductIds) {
+            $product->has_completed_consignment = $completedProductIds->has($product->id);
         });
 
         return response()->json($products);

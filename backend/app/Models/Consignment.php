@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Consignment extends Model
 {
-    protected $fillable = ['company', 'location', 'product_id', 'quantity', 'duration_days', 'start_date', 'end_date', 'status', 'umkm_id'];
+    protected $fillable = ['company', 'product_id', 'quantity', 'duration_days', 'start_date', 'end_date', 'status', 'umkm_id'];
 
     public function umkm()
     {

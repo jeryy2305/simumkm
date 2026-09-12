@@ -11,6 +11,7 @@ use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\UmkmUserDashboardController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\HotelController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -21,6 +22,7 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::put('/umkms/{umkm}/status', [UmkmController::class, 'updateStatus']);
     Route::apiResource('products', ProductController::class);
     Route::apiResource('product-requests', ProductRequestController::class);
+    Route::apiResource('hotels', HotelController::class);
     Route::apiResource('consignments', ConsignmentController::class);
 
     // UMKM User Routes
@@ -31,7 +33,6 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::get('/umkm-user/product-requests/history', [ProductRequestController::class, 'userHistoryIndex']);
     Route::get('/umkm-user/product-requests/{productRequest}/history', [ProductRequestController::class, 'history']);
     Route::post('/umkm-user/product-requests/{productRequest}/take', [ProductRequestController::class, 'take']);
-
     // Profile Routes
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile/update', [ProfileController::class, 'updateProfile']);
