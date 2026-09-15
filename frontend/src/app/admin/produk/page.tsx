@@ -301,7 +301,7 @@ export default function DataProduk() {
                         <table className="w-full text-left whitespace-nowrap">
                             <thead>
                                 <tr className="bg-gray-50/80">
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">ID Produk</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">No</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Info Produk</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Pemilik (UMKM)</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Kategori</th>
@@ -310,9 +310,9 @@ export default function DataProduk() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {filteredData.map((item) => (
+                                {filteredData.map((item, index) => (
                                     <tr key={item.id} className={`transition-colors group ${item.has_completed_consignment ? 'bg-gray-50/60' : 'hover:bg-blue-50/40'}`}>
-                                        <td className="py-4 px-6 text-sm font-bold text-gray-400">#{item.id}</td>
+                                        <td className="py-4 px-6 text-sm font-bold text-gray-400">{index + 1}</td>
                                         <td className="py-4 px-6">
                                             <div className="flex flex-col">
                                                 <span className={`text-sm font-extrabold transition-colors ${item.has_completed_consignment ? 'text-gray-500' : 'text-gray-900 group-hover:text-amber-600'}`}>{item.name}</span>

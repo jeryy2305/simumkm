@@ -118,6 +118,7 @@ export default function FloatingWhatsAppButton() {
   useEffect(() => {
     // don't override if user already moved the button
     if (position.x !== 0 || position.y !== 0) return;
+    if (window.matchMedia("(min-width: 768px)").matches) return;
 
     let offset = 0;
     const selectors = ["nav", "[role=\"navigation\"]", ".navbar", "header"];
@@ -148,22 +149,30 @@ export default function FloatingWhatsAppButton() {
       });
     }
 
+    let frameId: number | undefined;
     if (offset > 0) {
-      setPosition((p) => ({ ...p, y: -(offset + 12) }));
+      // bottom-24 already clears the navbar; reduce the gap slightly on mobile.
+      frameId = requestAnimationFrame(() => {
+        setPosition((p) => ({ ...p, y: Math.max(0, 96 - (offset + 8)) }));
+      });
     } else {
       // Try safe-area inset fallback (iOS)
-      try {
-        const safeInset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom')) || 0;
-        if (safeInset > 0) setPosition((p) => ({ ...p, y: -(safeInset + 12) }));
-      } catch (err) {
-        // ignore
+      const safeInset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom')) || 0;
+      if (safeInset > 0) {
+        frameId = requestAnimationFrame(() => {
+          setPosition((p) => ({ ...p, y: Math.max(0, 8 - safeInset) }));
+        });
       }
     }
+
+    return () => {
+      if (frameId !== undefined) cancelAnimationFrame(frameId);
+    };
   }, []);
 
   return (
     <div
-      className="fixed bottom-4 right-4 z-50 cursor-grab active:cursor-grabbing touch-none"
+      className="fixed bottom-24 right-4 z-50 cursor-grab active:cursor-grabbing touch-none md:bottom-4"
       style={{
         transform: `translate(${position.x}px, ${position.y}px)`,
         touchAction: 'none',

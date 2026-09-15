@@ -15,10 +15,11 @@ interface ProductRequest {
   reference_price: number | null;
   price_offered: number | null;
   purpose?: string | null;
-  status: "open" | "taken" | "completed" | "cancelled";
+  status: "open" | "pending_approval" | "taken" | "completed" | "cancelled";
   taken_by_umkm?: { id: number; owner: string; name?: string } | null;
   created_at?: string;
   updated_at?: string;
+  offers?: Array<{ id: number; price_offered: number; status: string }>;
 }
 
 interface RequestHistoryItem {
@@ -83,6 +84,21 @@ export default function RequestProdukUMKM() {
     fetchRequests();
   }, [fetchRequests]);
 
+  const focusRequest = useCallback((requestId: string) => {
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    const primaryId = isMobile ? `request-mobile-${requestId}` : `request-${requestId}`;
+    const fallbackId = isMobile ? `request-${requestId}` : `request-mobile-${requestId}`;
+    const element = document.getElementById(primaryId) || document.getElementById(fallbackId);
+
+    if (element) {
+      window.setTimeout(() => {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        element.classList.add("bg-amber-100/50", "transition-all", "duration-1000");
+        window.setTimeout(() => element.classList.remove("bg-amber-100/50"), 3000);
+      }, 150);
+    }
+  }, []);
+
   useEffect(() => {
     if (!notification) return;
     const timer = window.setTimeout(() => setNotification(null), 4000);
@@ -104,22 +120,19 @@ export default function RequestProdukUMKM() {
     }
 
     if (requestId) {
-      const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-      const primaryId = isMobile ? `request-mobile-${requestId}` : `request-${requestId}`;
-      const fallbackId = isMobile ? `request-${requestId}` : `request-mobile-${requestId}`;
-      
-      const element = document.getElementById(primaryId) || document.getElementById(fallbackId);
-      if (element) {
-        setTimeout(() => {
-          element.scrollIntoView({ behavior: "smooth", block: "center" });
-          element.classList.add("bg-amber-100/50", "transition-all", "duration-1000");
-          setTimeout(() => {
-            element.classList.remove("bg-amber-100/50");
-          }, 3000);
-        }, 150); // slightly longer timeout to guarantee painting is fully complete
-      }
+      focusRequest(requestId);
     }
-  }, [loading, requests]);
+  }, [focusRequest, loading, requests]);
+
+  useEffect(() => {
+    const handleRequestFocus = (event: Event) => {
+      const requestId = (event as CustomEvent<string>).detail;
+      if (!loading && requests.length > 0 && requestId) focusRequest(requestId);
+    };
+
+    window.addEventListener("product-request-focus", handleRequestFocus);
+    return () => window.removeEventListener("product-request-focus", handleRequestFocus);
+  }, [focusRequest, loading, requests]);
 
   const openTakeModal = (request: ProductRequest) => {
     setSelectedRequest(request);
@@ -139,12 +152,16 @@ export default function RequestProdukUMKM() {
 
   const getHistoryStatusLabel = (status?: string) => {
     switch (status) {
+      case "Menunggu Persetujuan":
+        return "Menunggu Persetujuan";
       case "Dalam Penyaluran":
         return "Dalam Penyaluran";
       case "Selesai Dititip":
         return "Selesai Dititip";
       case "Retur":
         return "Retur";
+      case "Terbuka":
+        return "Terbuka";
       default:
         return "Sedang Ditinjau";
     }
@@ -152,12 +169,16 @@ export default function RequestProdukUMKM() {
 
   const getHistoryStatusClasses = (status?: string) => {
     switch (status) {
+      case "Menunggu Persetujuan":
+        return "bg-slate-200 text-slate-700";
       case "Dalam Penyaluran":
         return "bg-amber-100 text-amber-700";
       case "Selesai Dititip":
         return "bg-emerald-100 text-emerald-700";
       case "Retur":
         return "bg-rose-100 text-rose-700";
+      case "Terbuka":
+        return "bg-emerald-100 text-emerald-700";
       default:
         return "bg-amber-100 text-amber-700";
     }
@@ -221,9 +242,10 @@ export default function RequestProdukUMKM() {
         throw new Error(message);
       }
 
-      const result = await parseJson<{ request: ProductRequest; product: unknown }>(response);
+      const result = await parseJson<{ request: ProductRequest }>(response);
       setRequests((prev) => prev.map((item) => (item.id === result.request.id ? result.request : item)));
-      setNotification({ type: "success", message: "Request berhasil diambil. Produk baru telah dibuat." });
+      window.dispatchEvent(new Event("product-request-status-changed"));
+      setNotification({ type: "success", message: "Harga berhasil diajukan dan menunggu persetujuan admin." });
       setIsModalOpen(false);
       setSelectedRequest(null);
     } catch (err: unknown) {
@@ -290,19 +312,18 @@ export default function RequestProdukUMKM() {
               <table className="w-full text-left whitespace-nowrap">
                 <thead>
                   <tr className="bg-gray-50/80">
-                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">ID</th>
                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Request</th>
                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Kategori</th>
                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Kuantitas</th>
                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Budget</th>
+                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Riwayat Harga</th>
                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Status</th>
                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filteredRequests.map((item) => (
-                    <tr key={item.id} id={`request-${item.id}`} className="hover:bg-blue-50/40 transition-colors group">
-                      <td className="py-4 px-6 text-sm font-bold text-gray-400">#{item.id}</td>
+                    <tr key={item.id} id={`request-${item.id}`} className={`transition-colors group ${item.status === 'pending_approval' ? 'bg-gray-100 opacity-75' : 'hover:bg-blue-50/40'}`}>
                       <td className="py-4 px-6">
                         <div className="space-y-1">
                           <p className="text-sm font-extrabold text-gray-900">{item.name}</p>
@@ -316,9 +337,12 @@ export default function RequestProdukUMKM() {
                       </td>
                       <td className="py-4 px-6 text-center font-bold text-gray-700">{item.quantity}</td>
                       <td className="py-4 px-6 text-sm font-semibold text-gray-700">{item.reference_price ? `Rp ${Number(item.reference_price).toLocaleString('id-ID')}` : '—'}</td>
+                      <td className="py-4 px-6 text-xs font-semibold text-gray-500">
+                        {item.offers?.filter((offer) => offer.status === "rejected").map((offer) => `Rp ${Number(offer.price_offered).toLocaleString('id-ID')}`).join(", ") || "—"}
+                      </td>
                       <td className="py-4 px-6">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${item.status === 'open' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
-                          {item.status === 'open' ? 'Terbuka' : 'Diambil'}
+                          {item.status === 'open' ? 'Terbuka' : item.status === 'pending_approval' ? 'Menunggu Persetujuan' : 'Sudah Diambil'}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-right">
@@ -329,9 +353,13 @@ export default function RequestProdukUMKM() {
                           >
                             <Package size={16} /> Ambil Request
                           </button>
+                        ) : item.status === 'pending_approval' ? (
+                          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-gray-200 text-gray-600 text-sm font-semibold">
+                            <AlertCircle size={16} /> Menunggu Persetujuan
+                          </div>
                         ) : (
                           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-100 text-slate-700 text-sm font-semibold">
-                            <CheckCircle2 size={16} /> Diambil
+                            <CheckCircle2 size={16} /> Sudah Diambil
                           </div>
                         )}
                       </td>
@@ -355,14 +383,14 @@ export default function RequestProdukUMKM() {
             <div className="md:hidden space-y-4 px-4 py-5">
               {filteredRequests.length > 0 ? (
                 filteredRequests.map((item) => (
-                  <article key={item.id} id={`request-mobile-${item.id}`} className="rounded-4xl border border-gray-100 bg-slate-50 p-4 shadow-sm">
+                  <article key={item.id} id={`request-mobile-${item.id}`} className={`rounded-4xl border border-gray-100 p-4 shadow-sm ${item.status === 'pending_approval' ? 'bg-gray-200 opacity-75' : 'bg-slate-50'}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-extrabold text-gray-900">{item.name}</p>
-                        <p className="text-xs text-gray-500 mt-1">#{item.id} • {item.category}</p>
+                        <p className="text-xs text-gray-500 mt-1">{item.category}</p>
                       </div>
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${item.status === 'open' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
-                        {item.status === 'open' ? 'Terbuka' : 'Diambil'}
+                        {item.status === 'open' ? 'Terbuka' : item.status === 'pending_approval' ? 'Menunggu Persetujuan' : 'Sudah Diambil'}
                       </span>
                     </div>
 
@@ -374,6 +402,12 @@ export default function RequestProdukUMKM() {
                       <div className="flex items-center justify-between gap-2 rounded-3xl bg-white px-4 py-3 shadow-sm border border-gray-100">
                         <span className="text-slate-500">Budget</span>
                         <span className="font-semibold">{item.reference_price ? `Rp ${Number(item.reference_price).toLocaleString('id-ID')}` : '—'}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 rounded-3xl bg-white px-4 py-3 shadow-sm border border-gray-100">
+                        <span className="text-slate-500">Riwayat harga</span>
+                        <span className="text-right font-semibold">
+                          {item.offers?.filter((offer) => offer.status === "rejected").map((offer) => `Rp ${Number(offer.price_offered).toLocaleString('id-ID')}`).join(", ") || "—"}
+                        </span>
                       </div>
                     </div>
 
@@ -387,9 +421,13 @@ export default function RequestProdukUMKM() {
                         >
                           <Package size={16} /> Ambil Request
                         </button>
+                      ) : item.status === 'pending_approval' ? (
+                        <div className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-300 px-4 py-3 text-sm font-semibold text-gray-600">
+                          <AlertCircle size={16} /> Menunggu Persetujuan
+                        </div>
                       ) : (
                         <div className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700">
-                          <CheckCircle2 size={16} /> Diambil
+                          <CheckCircle2 size={16} /> Sudah Diambil
                         </div>
                       )}
                     </div>

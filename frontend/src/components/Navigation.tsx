@@ -14,10 +14,22 @@ import {
     Menu,
     X,
     Building2,
-    Hotel
+    Hotel,
+    PanelLeftClose,
+    PanelLeftOpen,
 } from "lucide-react";
 
-export function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (val: boolean) => void }) {
+export function Sidebar({
+    isOpen,
+    setIsOpen,
+    isCollapsed,
+    setIsCollapsed,
+}: {
+    isOpen: boolean;
+    setIsOpen: (val: boolean) => void;
+    isCollapsed: boolean;
+    setIsCollapsed: (val: boolean) => void;
+}) {
     const pathname = usePathname();
 
     const menuItems = [
@@ -39,13 +51,13 @@ export function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (va
                 />
             )}
 
-            <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-blue-950 text-white transition-all duration-300 transform ${isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} lg:translate-x-0 lg:static lg:inset-0 border-r border-blue-900 flex flex-col`}>
-                <div className="flex items-center justify-between h-24 px-6 bg-blue-900/40 border-b border-blue-800/80 backdrop-blur-md">
-                    <div className="flex items-center space-x-4">
+            <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-blue-950 text-white transition-[width,transform] duration-500 ease-in-out transform ${isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} lg:translate-x-0 lg:static lg:inset-0 ${isCollapsed ? "lg:w-24" : "lg:w-72"} border-r border-blue-900 flex flex-col`}>
+                <div className={`flex items-center h-24 bg-blue-900/40 border-b border-blue-800/80 backdrop-blur-md transition-[padding] duration-500 ease-in-out ${isCollapsed ? "justify-center px-3" : "justify-between px-6"}`}>
+                    <div className={`flex items-center ${isCollapsed ? "justify-center" : "space-x-4"}`}>
                         <div className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center text-blue-950 shadow-inner">
                             <Building2 size={24} />
                         </div>
-                        <div className="flex flex-col">
+                        <div className={`flex flex-col overflow-hidden transition-[max-width,opacity] duration-500 ease-in-out ${isCollapsed ? "max-w-0 opacity-0" : "max-w-[180px] opacity-100"}`}>
                             <span className="text-sm font-extrabold tracking-wider text-white uppercase">SIM-KEMITRAAN</span>
                             <span className="text-[10px] font-bold text-amber-400 tracking-widest mt-1">PT ADE MESTAKUNG</span>
                         </div>
@@ -53,10 +65,19 @@ export function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (va
                     <button onClick={() => setIsOpen(false)} className="lg:hidden text-blue-300 hover:text-white hover:bg-blue-800/50 transition-all p-2 rounded-xl active:scale-95 cursor-pointer">
                         <X size={24} />
                     </button>
+                    <button
+                        type="button"
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        className="hidden lg:flex p-2 rounded-xl text-blue-300 hover:bg-blue-800/60 hover:text-white transition-all cursor-pointer"
+                        title={isCollapsed ? "Perlebar sidebar" : "Perkecil sidebar"}
+                        aria-label={isCollapsed ? "Perlebar sidebar" : "Perkecil sidebar"}
+                    >
+                        {isCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+                    </button>
                 </div>
 
-                <div className="flex flex-col flex-1 overflow-y-auto px-5 py-8">
-                    <p className="px-3 text-xs font-bold tracking-[0.2em] text-blue-400/80 mb-5 uppercase">Menu Operasional</p>
+                <div className={`flex flex-col flex-1 overflow-y-auto py-8 transition-[padding] duration-500 ease-in-out ${isCollapsed ? "px-3" : "px-5"}`}>
+                    <p className={`overflow-hidden px-3 text-xs font-bold tracking-[0.2em] text-blue-400/80 uppercase transition-[max-height,opacity,margin] duration-500 ease-in-out ${isCollapsed ? "max-h-0 opacity-0 mb-0" : "max-h-5 opacity-100 mb-5"}`}>Menu Operasional</p>
                     <nav className="flex-1 space-y-2.5">
                         {menuItems.map((item) => {
                             const Icon = item.icon;
@@ -73,26 +94,28 @@ export function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (va
                                 <Link
                                     key={item.name}
                                     href={item.href}
-                                    className={`flex items-center px-4 py-3.5 rounded-2xl transition-all duration-300 group ${isActive ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-bold" : "text-blue-200/90 hover:bg-blue-900/60 hover:text-white font-medium"}`}
+                                    className={`flex items-center rounded-2xl transition-[padding,background-color,box-shadow] duration-500 ease-in-out group ${isCollapsed ? "justify-center px-3 py-3.5" : "px-4 py-3.5"} ${isActive ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-bold" : "text-blue-200/90 hover:bg-blue-900/60 hover:text-white font-medium"}`}
+                                    title={isCollapsed ? item.name : undefined}
                                 >
-                                    <Icon size={20} className={`mr-4 transition-colors ${isActive ? "text-amber-300" : "text-blue-400 group-hover:text-amber-400"}`} />
-                                    {item.name}
+                                    <Icon size={20} className={`${isCollapsed ? "mr-0" : "mr-4"} transition-[margin,color] duration-500 ease-in-out ${isActive ? "text-amber-300" : "text-blue-400 group-hover:text-amber-400"}`} />
+                                    <span className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-500 ease-in-out ${isCollapsed ? "max-w-0 opacity-0" : "max-w-[180px] opacity-100"}`}>{item.name}</span>
                                 </Link>
                             );
                         })}
                     </nav>
                 </div>
 
-                <div className="p-5 border-t border-blue-900/80 bg-blue-950">
+                <div className={`border-t border-blue-900/80 bg-blue-950 transition-[padding] duration-500 ease-in-out ${isCollapsed ? "p-3" : "p-5"}`}>
                     <button
                         onClick={async () => {
                             await logout();
                             window.location.href = "/login";
                         }}
-                        className="flex items-center px-4 py-4 text-blue-300 transition-all duration-300 rounded-2xl hover:bg-red-500 hover:text-white hover:shadow-lg hover:shadow-red-500/20 w-full text-left font-bold group cursor-pointer active:scale-95"
+                        className={`flex items-center py-4 text-blue-300 transition-all duration-300 rounded-2xl hover:bg-red-500 hover:text-white hover:shadow-lg hover:shadow-red-500/20 w-full font-bold group cursor-pointer active:scale-95 ${isCollapsed ? "justify-center px-3" : "px-4 text-left"}`}
+                        title={isCollapsed ? "Keluar Sistem" : undefined}
                     >
-                        <LogOut size={20} className="mr-4 text-blue-500 group-hover:text-white transition-colors" />
-                        Keluar Sistem
+                        <LogOut size={20} className={`${isCollapsed ? "mr-0" : "mr-4"} text-blue-500 group-hover:text-white transition-[margin,color] duration-500 ease-in-out`} />
+                        <span className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-500 ease-in-out ${isCollapsed ? "max-w-0 opacity-0" : "max-w-[180px] opacity-100"}`}>Keluar Sistem</span>
                     </button>
                 </div>
             </aside>

@@ -228,7 +228,7 @@ export default function HotelManagementPage() {
                         <table className="w-full text-left whitespace-nowrap">
                             <thead>
                                 <tr className="bg-gray-50/80">
-                                    <th className="border-b border-gray-100 px-6 py-5 text-[10px] font-extrabold uppercase tracking-[0.15em] text-gray-500">ID</th>
+                                    <th className="border-b border-gray-100 px-6 py-5 text-[10px] font-extrabold uppercase tracking-[0.15em] text-gray-500">No</th>
                                     <th className="border-b border-gray-100 px-6 py-5 text-[10px] font-extrabold uppercase tracking-[0.15em] text-gray-500">Nama Hotel</th>
                                     <th className="border-b border-gray-100 px-6 py-5 text-[10px] font-extrabold uppercase tracking-[0.15em] text-gray-500">Lokasi</th>
                                     <th className="border-b border-gray-100 px-6 py-5 text-[10px] font-extrabold uppercase tracking-[0.15em] text-gray-500">Kontak</th>
@@ -238,9 +238,9 @@ export default function HotelManagementPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {filteredHotels.map((hotel) => (
+                                {filteredHotels.map((hotel, index) => (
                                     <tr key={hotel.id} className="transition-colors hover:bg-blue-50/40">
-                                        <td className="px-6 py-4 text-sm font-bold text-gray-400">#{hotel.id}</td>
+                                        <td className="px-6 py-4 text-sm font-bold text-gray-400">{index + 1}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-blue-700">

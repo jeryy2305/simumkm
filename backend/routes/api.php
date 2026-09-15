@@ -22,6 +22,8 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::put('/umkms/{umkm}/status', [UmkmController::class, 'updateStatus']);
     Route::apiResource('products', ProductController::class);
     Route::apiResource('product-requests', ProductRequestController::class);
+    Route::post('/product-requests/{productRequest}/approve', [ProductRequestController::class, 'approve']);
+    Route::post('/product-requests/{productRequest}/reject', [ProductRequestController::class, 'reject']);
     Route::apiResource('hotels', HotelController::class);
     Route::apiResource('consignments', ConsignmentController::class);
 

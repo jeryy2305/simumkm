@@ -202,7 +202,7 @@ export default function DataUMKM() {
                         <table className="w-full text-left whitespace-nowrap">
                             <thead>
                                 <tr className="bg-gray-50/80">
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">ID</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">No</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Informasi Pemilik</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Alamat</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Kontak</th>
@@ -214,7 +214,7 @@ export default function DataUMKM() {
                             <tbody className="divide-y divide-gray-50">
                                 {filteredData.map((item, index) => (
                                     <tr key={item.id} className="hover:bg-blue-50/40 transition-colors group">
-                                        <td className="py-4 px-6 text-sm font-bold text-gray-400">#{index + 1}</td>
+                                        <td className="py-4 px-6 text-sm font-bold text-gray-400">{index + 1}</td>
                                         <td className="py-4 px-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">

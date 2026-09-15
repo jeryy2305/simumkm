@@ -8,12 +8,14 @@ use Illuminate\Validation\Rule;
 use App\Models\Consignment;
 use App\Models\Product;
 use App\Models\ProductRequest;
+use App\Models\ProductRequestOffer;
+use Illuminate\Support\Facades\DB;
 
 class ProductRequestController extends Controller
 {
     public function index()
     {
-        return response()->json(ProductRequest::with('takenByUmkm')->orderBy('created_at', 'desc')->get());
+        return response()->json(ProductRequest::with(['takenByUmkm', 'offers.umkm'])->orderBy('created_at', 'desc')->get());
     }
 
     public function store(Request $request)
@@ -54,7 +56,7 @@ class ProductRequestController extends Controller
             'reference_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
             'purpose' => 'nullable|string',
-            'status' => ['required', Rule::in(['open', 'taken', 'completed', 'cancelled'])],
+            'status' => ['required', Rule::in(['open', 'pending_approval', 'taken', 'completed', 'cancelled'])],
         ]);
 
         $productRequest->update($request->only(['name', 'category', 'quantity', 'reference_price', 'description', 'purpose', 'status']));
@@ -80,9 +82,15 @@ class ProductRequestController extends Controller
             return response()->json(['message' => 'UMKM profile not found'], 404);
         }
 
-        $requests = ProductRequest::with('takenByUmkm')
-            ->where('status', 'open')
-            ->whereNull('taken_by_umkm_id')
+        $requests = ProductRequest::with(['takenByUmkm', 'offers.umkm'])
+            ->where(function ($query) {
+                $query->where('status', 'open')
+                    ->orWhere('status', 'pending_approval')
+                    ->orWhere(function ($approved) {
+                        $approved->where('status', 'taken')
+                            ->where('updated_at', '>=', now()->subDay());
+                    });
+            })
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -101,9 +109,11 @@ class ProductRequestController extends Controller
             return response()->json(['message' => 'UMKM profile not found'], 404);
         }
 
-        $requests = ProductRequest::with('takenByUmkm')
-            ->where('taken_by_umkm_id', $umkm->id)
-            ->whereIn('status', ['taken', 'completed', 'cancelled'])
+        $requests = ProductRequest::with(['takenByUmkm', 'offers.umkm'])
+            ->where(function ($query) use ($umkm) {
+                $query->where('taken_by_umkm_id', $umkm->id)
+                    ->orWhereHas('offers', fn ($offers) => $offers->where('umkm_id', $umkm->id));
+            })
             ->orderBy('updated_at', 'desc')
             ->get();
 
@@ -122,7 +132,7 @@ class ProductRequestController extends Controller
         }
 
         if ($user->role === 'admin') {
-            $productRequest->load('takenByUmkm');
+            $productRequest->load(['takenByUmkm', 'offers.umkm']);
             return response()->json([
                 'request' => $productRequest,
                 'history' => $this->buildRequestHistory($productRequest),
@@ -138,11 +148,11 @@ class ProductRequestController extends Controller
             return response()->json(['message' => 'UMKM profile not found'], 404);
         }
 
-        if ($productRequest->taken_by_umkm_id !== $umkm->id) {
+        if ($productRequest->taken_by_umkm_id !== $umkm->id && !$productRequest->offers()->where('umkm_id', $umkm->id)->exists()) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $productRequest->load('takenByUmkm');
+        $productRequest->load(['takenByUmkm', 'offers.umkm']);
 
         $productRequest->history_status = $this->resolveHistoryStatus($productRequest);
 
@@ -155,8 +165,12 @@ class ProductRequestController extends Controller
 
     private function resolveHistoryStatus(ProductRequest $productRequest): string
     {
+        if ($productRequest->status === 'pending_approval') {
+            return 'Menunggu Persetujuan';
+        }
+
         if (!$productRequest->taken_by_umkm_id || $productRequest->status === 'open') {
-            return 'Sedang Ditinjau';
+            return 'Terbuka';
         }
 
         $product = Product::where('umkm_id', $productRequest->taken_by_umkm_id)
@@ -195,6 +209,27 @@ class ProductRequestController extends Controller
             'description' => 'Permintaan produk dibuat oleh admin.',
             'timestamp' => $productRequest->created_at?->toIso8601String(),
         ]];
+
+        foreach ($productRequest->offers as $offer) {
+            $history[] = [
+                'title' => 'Pengajuan harga',
+                'description' => sprintf(
+                    '%s mengajukan harga Rp %s (%s).',
+                    $offer->umkm?->name ?? 'UMKM',
+                    number_format((float) $offer->price_offered, 0, ',', '.'),
+                    $offer->status === 'rejected' ? 'ditolak, menjadi referensi' : ($offer->status === 'approved' ? 'disetujui' : 'menunggu persetujuan')
+                ),
+                'timestamp' => $offer->created_at?->toIso8601String(),
+            ];
+        }
+
+        if ($productRequest->status === 'pending_approval') {
+            $history[] = [
+                'title' => 'Harga diajukan',
+                'description' => 'UMKM mengajukan harga dan menunggu persetujuan admin.',
+                'timestamp' => $productRequest->updated_at?->toIso8601String(),
+            ];
+        }
 
         if ($productRequest->taken_by_umkm_id && in_array($productRequest->status, ['taken', 'completed', 'cancelled'], true)) {
             $history[] = [
@@ -235,32 +270,99 @@ class ProductRequestController extends Controller
             return response()->json(['message' => 'UMKM profile not found'], 404);
         }
 
-        if ($productRequest->status !== 'open') {
-            return response()->json(['message' => 'Request sudah tidak tersedia'], 422);
-        }
-
         $request->validate([
             'price_offered' => 'required|numeric|min:0',
         ]);
 
-        $productRequest->update([
-            'status' => 'taken',
-            'taken_by_umkm_id' => $umkm->id,
-            'price_offered' => $request->price_offered,
-        ]);
+        if ($productRequest->status !== 'open') {
+            if ($productRequest->status === 'pending_approval' && (int) $productRequest->taken_by_umkm_id === (int) $umkm->id) {
+                $offer = $productRequest->offers()
+                    ->where('umkm_id', $umkm->id)
+                    ->where('status', 'pending')
+                    ->latest('id')
+                    ->first();
 
-        $product = Product::create([
-            'name' => $productRequest->name,
-            'category' => $productRequest->category,
-            'price' => $request->price_offered,
-            'quantity' => $productRequest->quantity,
-            'status' => 'available',
-            'umkm_id' => $umkm->id,
-        ]);
+                if ($offer) {
+                    $offer->update(['price_offered' => $request->price_offered]);
+                    $productRequest->update(['price_offered' => $request->price_offered]);
+
+                    return response()->json([
+                        'request' => $productRequest->fresh()->load(['takenByUmkm', 'offers.umkm']),
+                        'offer' => $offer->fresh()->load('umkm'),
+                    ]);
+                }
+            }
+
+            return response()->json(['message' => 'Request sudah tidak tersedia'], 422);
+        }
+
+        [$offer, $productRequest] = DB::transaction(function () use ($productRequest, $umkm, $request) {
+            $offer = ProductRequestOffer::create([
+                'product_request_id' => $productRequest->id,
+                'umkm_id' => $umkm->id,
+                'price_offered' => $request->price_offered,
+                'status' => 'pending',
+            ]);
+
+            $productRequest->update([
+                'status' => 'pending_approval',
+                'taken_by_umkm_id' => $umkm->id,
+                'price_offered' => $request->price_offered,
+            ]);
+
+            return [$offer, $productRequest];
+        });
 
         return response()->json([
-            'request' => $productRequest->load('takenByUmkm'),
-            'product' => $product,
+            'request' => $productRequest->load(['takenByUmkm', 'offers.umkm']),
+            'offer' => $offer->load('umkm'),
         ]);
+    }
+
+    public function approve(ProductRequest $productRequest)
+    {
+        if (Auth::user()?->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($productRequest->status !== 'pending_approval' || !$productRequest->taken_by_umkm_id) {
+            return response()->json(['message' => 'Request tidak sedang menunggu persetujuan'], 422);
+        }
+
+        $product = DB::transaction(function () use ($productRequest) {
+            $productRequest->offers()->where('status', 'pending')->update(['status' => 'approved']);
+            $productRequest->update(['status' => 'taken']);
+
+            return Product::create([
+                'name' => $productRequest->name,
+                'category' => $productRequest->category,
+                'price' => $productRequest->price_offered,
+                'quantity' => $productRequest->quantity,
+                'status' => 'available',
+                'umkm_id' => $productRequest->taken_by_umkm_id,
+            ]);
+        });
+
+        return response()->json(['request' => $productRequest->fresh()->load(['takenByUmkm', 'offers.umkm']), 'product' => $product]);
+    }
+
+    public function reject(ProductRequest $productRequest)
+    {
+        if (Auth::user()?->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($productRequest->status !== 'pending_approval') {
+            return response()->json(['message' => 'Request tidak sedang menunggu persetujuan'], 422);
+        }
+
+        $productRequest->offers()->where('status', 'pending')->update(['status' => 'rejected']);
+        $productRequest->update([
+            'status' => 'open',
+            'taken_by_umkm_id' => null,
+            'price_offered' => null,
+        ]);
+
+        return response()->json(['request' => $productRequest->fresh()->load(['takenByUmkm', 'offers.umkm'])]);
     }
 }

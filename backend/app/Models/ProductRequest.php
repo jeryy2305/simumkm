@@ -22,4 +22,9 @@ class ProductRequest extends Model
     {
         return $this->belongsTo(Umkm::class, 'taken_by_umkm_id');
     }
+
+    public function offers()
+    {
+        return $this->hasMany(ProductRequestOffer::class);
+    }
 }

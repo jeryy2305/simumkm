@@ -28,11 +28,6 @@ export default function DataPenitipan() {
     const activeUmkms = umkms.filter((u) => u.status === 'active');
     const availableProducts = products.filter((p) => p.status === 'available' && p.umkm?.status === 'active');
     const verifiedHotels = hotels.filter((h) => h.verified === true);
-    const getUmkmDisplayId = (umkmId?: number) => {
-        const index = umkms.findIndex((umkm) => umkm.id === umkmId);
-        return index >= 0 ? index + 1 : '-';
-    };
-
     // CRUD States
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -218,7 +213,7 @@ export default function DataPenitipan() {
                     </div>
                     <input
                         type="text"
-                        placeholder="Cari ID Mitra, Perusahaan Tujuan, atau Produk..."
+                        placeholder="Cari No Mitra, Perusahaan Tujuan, atau Produk..."
                         className="w-full bg-transparent px-2 py-3 outline-none text-sm font-medium text-gray-800"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -252,7 +247,7 @@ export default function DataPenitipan() {
                         <table className="w-full text-left whitespace-nowrap">
                             <thead>
                                 <tr className="bg-gray-50/80">
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">ID</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">No</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Mitra</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Alokasi Tujuan</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Nama Produk</th>
@@ -263,10 +258,10 @@ export default function DataPenitipan() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {filteredData.map((item) => (
+                                {filteredData.map((item, index) => (
                                     <tr key={item.id} className="hover:bg-amber-50/30 transition-colors group">
                                         <td className="py-5 px-6 text-sm font-bold text-amber-600">
-                                            #{getUmkmDisplayId(item.umkm_id)}
+                                            {index + 1}
                                         </td>
                                         <td className="py-5 px-6">
                                             <span className="text-sm font-extrabold text-blue-950 group-hover:text-blue-700 transition-colors">{item.umkm?.owner || 'Tanpa Pemilik'}</span>

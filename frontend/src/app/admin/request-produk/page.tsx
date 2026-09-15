@@ -22,8 +22,9 @@ interface ProductRequest {
     reference_price: number | null;
     price_offered: number | null;
     purpose?: string | null;
-    status: "open" | "taken" | "completed" | "cancelled";
+    status: "open" | "pending_approval" | "taken" | "completed" | "cancelled";
     taken_by_umkm?: UmkmData | null;
+    offers?: Array<{ id: number; price_offered: number; status: string; umkm?: UmkmData | null }>;
 }
 
 interface ProductRequestDetail extends ProductRequest {
@@ -117,8 +118,10 @@ export default function RequestProdukAdmin() {
 
     const getStatusLabel = (status: string) => {
         switch (status) {
+            case "pending_approval":
+                return "Menunggu Persetujuan";
             case "taken":
-                return "Diambil";
+                return "Sudah Diambil";
             case "completed":
                 return "Selesai";
             case "cancelled":
@@ -130,6 +133,8 @@ export default function RequestProdukAdmin() {
 
     const getStatusClasses = (status: string) => {
         switch (status) {
+            case "pending_approval":
+                return "bg-slate-200 text-slate-700";
             case "taken":
                 return "bg-blue-100 text-blue-700";
             case "completed":
@@ -138,6 +143,26 @@ export default function RequestProdukAdmin() {
                 return "bg-rose-100 text-rose-700";
             default:
                 return "bg-emerald-100 text-emerald-700";
+        }
+    };
+
+    const handleDecision = async (id: number, decision: "approve" | "reject") => {
+        try {
+            const response = await authFetch(`${API_URL}/api/product-requests/${id}/${decision}`, { method: "POST" });
+            if (!response.ok) {
+                const json = await parseJson<{ message?: string }>(response);
+                throw new Error(json.message || "Gagal memproses request");
+            }
+
+            const result = await parseJson<{ request: ProductRequest }>(response);
+            setRequests((previous) => previous.map((item) => item.id === id ? result.request : item));
+            setSelectedRequest((previous) => previous?.id === id ? result.request : previous);
+            setNotification({
+                type: "success",
+                message: decision === "approve" ? "Request disetujui dan produk masuk katalog." : "Request ditolak dan dibuka kembali untuk UMKM.",
+            });
+        } catch (err: unknown) {
+            setNotification({ type: "error", message: err instanceof Error ? err.message : "Terjadi kesalahan saat memproses request" });
         }
     };
 
@@ -236,7 +261,7 @@ export default function RequestProdukAdmin() {
                     <button
                         type="button"
                         onClick={refreshRequests}
-                        className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl border border-slate-200 transition-all active:scale-95"
+                        className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl border border-slate-200 transition-all active:scale-95 cursor-pointer"
                     >
                         {refreshing ? "Menyegarkan..." : "Segarkan"}
                     </button>
@@ -277,7 +302,7 @@ export default function RequestProdukAdmin() {
                         <table className="w-full text-left whitespace-nowrap">
                             <thead>
                                 <tr className="bg-gray-50/80">
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">ID</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">No</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Request</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Kategori</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Kuantitas</th>
@@ -289,9 +314,9 @@ export default function RequestProdukAdmin() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {filtered.map((item) => (
+                                {filtered.map((item, index) => (
                                     <tr key={item.id} className="hover:bg-blue-50/40 transition-colors group">
-                                        <td className="py-4 px-6 text-sm font-bold text-gray-400">#{item.id}</td>
+                                        <td className="py-4 px-6 text-sm font-bold text-gray-400">{index + 1}</td>
                                         <td className="py-4 px-6">
                                             <div className="space-y-1">
                                                 <p className="text-sm font-extrabold text-gray-900">{item.name}</p>
@@ -305,7 +330,11 @@ export default function RequestProdukAdmin() {
                                         </td>
                                         <td className="py-4 px-6 text-center font-bold text-gray-700">{item.quantity}</td>
                                         <td className="py-4 px-6 text-sm font-semibold text-gray-700">{item.reference_price ? `Rp ${Number(item.reference_price).toLocaleString('id-ID')}` : '—'}</td>
-                                        <td className="py-4 px-6 text-sm font-semibold text-gray-700">{item.price_offered ? `Rp ${Number(item.price_offered).toLocaleString('id-ID')}` : '—'}</td>
+                                        <td className="py-4 px-6 text-sm font-semibold text-gray-700">
+                                            {item.status === "pending_approval" && item.offers?.length
+                                                ? item.offers.filter((offer) => offer.status === "pending").map((offer) => `Rp ${Number(offer.price_offered).toLocaleString('id-ID')}`).join(", ")
+                                                : item.price_offered ? `Rp ${Number(item.price_offered).toLocaleString('id-ID')}` : '—'}
+                                        </td>
                                         <td className="py-4 px-6">
                                             <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${getStatusClasses(item.status)}`}>
                                                 {getStatusLabel(item.status)}
@@ -315,14 +344,28 @@ export default function RequestProdukAdmin() {
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
-                                                    className="px-4 py-2 rounded-2xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all text-sm font-semibold"
+                                                    className="px-4 py-2 rounded-2xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all text-sm font-semibold cursor-pointer"
                                                     onClick={() => handleOpenDetail(item.id)}
                                                     title="Lihat Detail Request"
                                                 >
                                                     <Eye size={16} />
                                                 </button>
+                                                {item.status === "pending_approval" ? (
+                                                    <>
+                                                        <button
+                                                            className="px-4 py-2 rounded-2xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all text-sm font-semibold cursor-pointer"
+                                                            onClick={() => void handleDecision(item.id, "approve")}
+                                                            title="Setujui penawaran"
+                                                        >Setujui</button>
+                                                        <button
+                                                            className="px-4 py-2 rounded-2xl bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white transition-all text-sm font-semibold cursor-pointer"
+                                                            onClick={() => void handleDecision(item.id, "reject")}
+                                                            title="Tolak penawaran"
+                                                        >Tolak</button>
+                                                    </>
+                                                ) : null}
                                                 <button
-                                                    className="px-4 py-2 rounded-2xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all text-sm font-semibold"
+                                                    className="px-4 py-2 rounded-2xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all text-sm font-semibold cursor-pointer"
                                                     onClick={() => handleDelete(item.id)}
                                                     title="Hapus Request"
                                                 >
