@@ -86,17 +86,23 @@ class UmkmUserDashboardController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $consignmentStatuses = Consignment::whereIn('product_id', $products->pluck('id'))
+        $consignmentsData = Consignment::whereIn('product_id', $products->pluck('id'))
             ->whereIn('status', ['active', 'cancelled', 'completed'])
-            ->get(['product_id', 'status'])
+            ->orderBy('created_at', 'desc')
+            ->get(['product_id', 'status', 'company'])
             ->groupBy('product_id');
         
         // Add consignment-driven status info for each product so UI shows correct state
-        $productsWithStatus = $products->map(function ($product) use ($consignmentStatuses) {
-            $statuses = $consignmentStatuses->get($product->id, collect())->pluck('status');
+        $productsWithStatus = $products->map(function ($product) use ($consignmentsData) {
+            $consignments = $consignmentsData->get($product->id, collect());
+            $statuses = $consignments->pluck('status');
             $hasActive = $statuses->contains('active');
             $hasCancelled = $statuses->contains('cancelled');
             $hasCompleted = $statuses->contains('completed');
+
+            // Set hotel name based on the most recent consignment
+            $latestConsignment = $consignments->first();
+            $product->hotel_name = $latestConsignment ? $latestConsignment->company : null;
 
             // Preserve original catalog quantity
             $catalogQty = $product->quantity;
@@ -147,41 +153,4 @@ class UmkmUserDashboardController extends Controller
         return response()->json($consignments);
     }
 
-    public function index()
-    {
-        $user = Auth::user();
-
-        if (!$user || $user->role !== 'umkm') {
-            return redirect('/')->with('error', 'Unauthorized');
-        }
-
-        $umkm = $user->umkm;
-
-        if (!$umkm) {
-            return redirect('/')->with('error', 'UMKM profile not found');
-        }
-
-        $totalTitipan = Consignment::where('umkm_id', $umkm->id)->count();
-        $produkAktif = Product::where('umkm_id', $umkm->id)->where('status', 'available')->count();
-        $selesai = Consignment::where('umkm_id', $umkm->id)->where('status', 'completed')->count();
-
-        $recentConsignments = Consignment::with('product')->where('umkm_id', $umkm->id)
-                                ->orderBy('created_at', 'desc')
-                                ->take(5)
-                                ->get();
-        
-        $activities = [];
-        foreach ($recentConsignments as $c) {
-            $activities[] = [
-                'id' => 'C-' . $c->id,
-                'title' => 'Penitipan ' . $c->company,
-                'status' => $c->status === 'completed' ? 'Selesai' : ($c->status === 'active' ? 'Proses' : 'Batal'),
-                'date' => $c->created_at->diffForHumans(),
-                'amount' => ($c->product ? $c->product->quantity : 0) . ' ' . ($c->product ? $c->product->name : 'N/A'),
-                'type' => 'consignment'
-            ];
-        }
-
-        return view('umkm-dashboard', compact('totalTitipan', 'produkAktif', 'selesai', 'activities'));
-    }
 }

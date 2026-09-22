@@ -16,22 +16,40 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        if (Auth::attempt($request->only('email', 'password'))) {
-            $user = Auth::user();
-            $token = $user->createToken('API Token')->plainTextToken;
+        $user = User::where('email', $request->email)->first();
 
+        if (!$user) {
             return response()->json([
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'role' => $user->role,
-                ],
-                'token' => $token,
-            ]);
+                'message' => 'Alamat email tidak terdaftar.',
+                'field' => 'email',
+                'errors' => [
+                    'email' => ['Alamat email tidak terdaftar.']
+                ]
+            ], 401);
         }
 
-        return response()->json(['message' => 'Invalid credentials'], 401);
+        if (!Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'message' => 'Kata sandi yang Anda masukkan salah.',
+                'field' => 'password',
+                'errors' => [
+                    'password' => ['Kata sandi yang Anda masukkan salah.']
+                ]
+            ], 401);
+        }
+
+        Auth::login($user);
+        $token = $user->createToken('API Token')->plainTextToken;
+
+        return response()->json([
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+            ],
+            'token' => $token,
+        ]);
     }
 
     public function logout(Request $request)

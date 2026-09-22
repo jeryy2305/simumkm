@@ -53,7 +53,6 @@ class AdminDashboardController extends Controller
                 ];
                 return [
                     'date' => $consignment->created_at->format('d M Y'),
-                    'type' => $statusMap[$consignment->status] ?? 'Unknown',
                     'partner' => $consignment->company,
                     'product' => $consignment->product ? $consignment->product->name : 'Produk Terhapus',
                     'qty' => $consignment->product ? $consignment->product->quantity : 0,

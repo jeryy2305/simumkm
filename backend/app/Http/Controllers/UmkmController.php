@@ -70,8 +70,7 @@ class UmkmController extends Controller
             $user->save();
         }
 
-        $umkm->update($request->only(['owner', 'phone', 'address', 'join_date']));
-        $umkm->update(['name' => $request->owner]);
+        $umkm->update(array_merge($request->only(['owner', 'phone', 'address', 'join_date']), ['name' => $request->owner]));
         return response()->json($umkm->load('user'));
     }
 
