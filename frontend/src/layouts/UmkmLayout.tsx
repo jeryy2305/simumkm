@@ -103,7 +103,7 @@ export default function UmkmLayout({
         { name: "Beranda", href: "/umkm/dashboard", icon: LayoutDashboard },
         { name: "Produk", href: "/umkm/produk", icon: Package },
         { name: "Permintaan", href: "/umkm/request-produk", icon: ClipboardList, badge: requestCount },
-        { name: "Titipan", href: "/umkm/penitipan", icon: Package },
+
     ];
 
     return (

@@ -11,7 +11,7 @@ type FormData = ConsignmentFormData;
 type Status = "active" | "completed" | "cancelled";
 
 function isStatus(value: string): value is Status {
-  return ["active", "completed", "cancelled"].includes(value);
+    return ["active", "completed", "cancelled"].includes(value);
 }
 
 export default function DataPenitipan() {
@@ -204,7 +204,7 @@ export default function DataPenitipan() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-blue-950 mb-2">Administrasi Penitipan</h1>
+                    <h1 className="text-3xl font-extrabold text-blue-950 mb-2">Data Penitipan</h1>
                     <p className="text-gray-500 text-sm md:text-base">Pusat data lalu lintas penyaluran produk UMKM ke perhotelan.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -225,7 +225,7 @@ export default function DataPenitipan() {
                     </div>
                     <input
                         type="text"
-                        placeholder="Cari No Mitra, Perusahaan Tujuan, atau Produk..."
+                        placeholder="Cari nama pemilik (UMKM), tujuan, atau produk..."
                         className="w-full bg-transparent px-2 py-3 outline-none text-sm font-medium text-gray-800"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -260,7 +260,7 @@ export default function DataPenitipan() {
                             <thead>
                                 <tr className="bg-gray-50/80">
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">No</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Mitra</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Pemilik (UMKM)</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Alokasi Tujuan</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Nama Produk</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Harga Jual</th>
@@ -286,7 +286,7 @@ export default function DataPenitipan() {
                                         </td>
                                         <td className="py-5 px-6">
                                             {item.product?.price != null ? (
-                                                <span className="text-sm font-extrabold text-blue-950 bg-blue-50/50 px-2.5 py-1 rounded-lg border border-blue-100">
+                                                <span className="text-sm font-extrabold text-gray-900">
                                                     Rp {Number(item.product.hotel_price ?? (Number(item.product.price) + Number(item.product.partner_profit || 0))).toLocaleString('id-ID')}
                                                 </span>
                                             ) : (
@@ -295,7 +295,7 @@ export default function DataPenitipan() {
                                         </td>
                                         <td className="py-5 px-6">
                                             {item.product?.quantity != null ? (
-                                                <span className="text-sm font-extrabold text-blue-950 bg-blue-50/50 px-2.5 py-1 rounded-lg border border-blue-100">
+                                                <span className="text-sm font-extrabold text-gray-900">
                                                     {item.product.quantity} unit
                                                 </span>
                                             ) : (
@@ -304,7 +304,7 @@ export default function DataPenitipan() {
                                         </td>
                                         <td className="py-5 px-6">
                                             <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${item.status === 'active' || item.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                    'bg-red-50 text-red-700 border-red-200'
+                                                'bg-red-50 text-red-700 border-red-200'
                                                 }`}>
                                                 {item.status === 'active' && <Clock size={12} className="shrink-0" />}
                                                 {item.status === 'completed' && <CheckCircle2 size={12} className="shrink-0" />}
@@ -382,8 +382,8 @@ export default function DataPenitipan() {
                             <div>
                                 <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Harga Produk</label>
                                 <div className={`px-3.5 py-2.5 rounded-lg border text-sm font-semibold transition-all ${selectedProductInfo.price !== null
-                                        ? 'bg-white border-gray-200 text-gray-800'
-                                        : 'bg-gray-100/60 border-gray-100 text-gray-400 text-xs'
+                                    ? 'bg-white border-gray-200 text-gray-800'
+                                    : 'bg-gray-100/60 border-gray-100 text-gray-400 text-xs'
                                     }`}>
                                     {selectedProductInfo.price !== null
                                         ? `Rp ${Number(selectedProductInfo.price).toLocaleString('id-ID')}`
@@ -393,8 +393,8 @@ export default function DataPenitipan() {
                             <div>
                                 <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Keuntungan Mitra</label>
                                 <div className={`px-3.5 py-2.5 rounded-lg border text-sm font-semibold transition-all ${selectedProductInfo.partner_profit !== null
-                                        ? 'bg-emerald-50/60 border-emerald-200 text-emerald-700'
-                                        : 'bg-gray-100/60 border-gray-100 text-gray-400 text-xs'
+                                    ? 'bg-emerald-50/60 border-emerald-200 text-emerald-700'
+                                    : 'bg-gray-100/60 border-gray-100 text-gray-400 text-xs'
                                     }`}>
                                     {selectedProductInfo.partner_profit !== null
                                         ? `+ Rp ${Number(selectedProductInfo.partner_profit).toLocaleString('id-ID')}`
@@ -405,8 +405,8 @@ export default function DataPenitipan() {
 
                         {/* Harga Jual — full width, prominent */}
                         <div className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all ${selectedProductInfo.hotel_price !== null
-                                ? 'bg-blue-50 border-blue-200'
-                                : 'bg-gray-50 border-gray-100'
+                            ? 'bg-blue-50 border-blue-200'
+                            : 'bg-gray-50 border-gray-100'
                             }`}>
                             <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500">Harga Jual</span>
                             <span className={`text-base font-extrabold transition-all ${selectedProductInfo.hotel_price !== null ? 'text-blue-700' : 'text-gray-400 text-sm'}`}>
@@ -474,7 +474,7 @@ export default function DataPenitipan() {
             <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Pembaruan Log Data">
                 {editItem && (
                     <form onSubmit={handleEditSubmit} className="space-y-5 px-1 py-2">
-                            <div>
+                        <div>
                             <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Tujuan Distribusi Baru</label>
                             <select
                                 required

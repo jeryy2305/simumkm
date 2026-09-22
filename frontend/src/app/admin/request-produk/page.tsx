@@ -406,14 +406,25 @@ export default function RequestProdukAdmin() {
                 ) : error ? (
                     <div className="p-8 text-center text-red-500 font-bold bg-red-50">Error: {error}</div>
                 ) : (
-                    <div className="overflow-hidden">
+                    <div className="overflow-x-auto">
                         <table className="w-full text-left border-separate border-spacing-0">
+                            <colgroup>
+                                <col style={{width:"40px"}} />
+                                <col style={{width:"200px"}} />
+                                <col style={{width:"110px"}} />
+                                <col style={{width:"60px"}} />
+                                <col style={{width:"120px"}} />
+                                <col style={{width:"120px"}} />
+                                <col style={{width:"110px"}} />
+                                <col style={{width:"90px"}} />
+                                <col style={{width:"110px"}} />
+                            </colgroup>
                             <thead>
                                 <tr className="bg-gray-50/80">
                                     <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">No</th>
                                     <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Request</th>
                                     <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Kategori</th>
-                                    <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Qty</th>
+                                    <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Stok</th>
                                     <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Harga</th>
                                     <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Keuntungan</th>
                                     <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Status</th>
@@ -436,19 +447,19 @@ export default function RequestProdukAdmin() {
                                                 <Tag size={11} /> {item.category}
                                             </span>
                                         </td>
-                                        <td className="py-3 px-3 text-center font-bold text-gray-700 align-top">{item.quantity}</td>
-                                        <td className="py-3 px-3 text-xs font-semibold text-gray-700 align-top">
+                                        <td className="py-3 px-3 text-sm font-semibold text-gray-900 text-center align-top">{item.quantity}</td>
+                                        <td className="py-3 px-3 text-sm font-semibold text-gray-900 align-top">
                                             {item.reference_price !== null && item.reference_price !== undefined
                                                 ? `Rp ${Number(item.reference_price).toLocaleString('id-ID')}`
                                                 : '—'}
                                         </td>
-                                        <td className="py-3 px-3 text-xs font-semibold text-emerald-700 align-top">{item.partner_profit ? `Rp ${Number(item.partner_profit).toLocaleString('id-ID')}` : '—'}</td>
+                                        <td className="py-3 px-3 text-sm font-semibold text-emerald-700 align-top">{item.partner_profit ? `Rp ${Number(item.partner_profit).toLocaleString('id-ID')}` : '—'}</td>
                                         <td className="py-3 px-3 align-top">
                                             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusClasses(item.status)}`}>
                                                 {getStatusLabel(item.status)}
                                             </span>
                                         </td>
-                                        <td className="py-3 px-3 text-xs font-semibold text-gray-700 align-top">
+                                        <td className="py-3 px-3 text-sm font-semibold text-gray-900 align-top">
                                             {item.offers?.length ? `${item.offers.length} peserta` : "Belum"}
                                         </td>
                                         <td className="py-3 px-3 text-right align-top">

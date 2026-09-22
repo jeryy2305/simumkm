@@ -307,13 +307,12 @@ export default function DataProduk() {
                                 <tr className="bg-gray-50/80">
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">No</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Info Produk</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Keuntungan Mitra</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Keuntungan</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Harga Jual</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Pemilik (UMKM)</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Kategori</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Kuantitas</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Status</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-right">Manajemen</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Stok</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-right">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -322,16 +321,16 @@ export default function DataProduk() {
                                         <td className="py-4 px-6 text-sm font-bold text-gray-400">{index + 1}</td>
                                         <td className="py-4 px-6">
                                             <div className="flex flex-col">
-                                                <span className={`text-sm font-extrabold transition-colors ${item.has_completed_consignment ? 'text-gray-500' : 'text-gray-900 group-hover:text-amber-600'}`}>{item.name}</span>
-                                                <span className="text-xs font-bold text-blue-600 mt-0.5">Rp {Number(item.price).toLocaleString('id-ID')}</span>
+                                                <span className="text-sm font-extrabold text-gray-900">{item.name}</span>
+                                                <span className="text-xs font-bold text-gray-700 mt-0.5">Rp {Number(item.price).toLocaleString('id-ID')}</span>
                                             </div>
                                         </td>
                                         <td className="py-4 px-6 text-sm font-semibold text-emerald-700">Rp {Number(item.partner_profit || 0).toLocaleString('id-ID')}</td>
-                                        <td className="py-4 px-6 text-sm font-extrabold text-blue-700">Rp {Number(item.hotel_price ?? item.price).toLocaleString('id-ID')}</td>
+                                        <td className="py-4 px-6 text-sm font-extrabold text-gray-900">Rp {Number(item.hotel_price ?? item.price).toLocaleString('id-ID')}</td>
                                         <td className="py-4 px-6">
                                             <div className="flex items-center gap-2">
-                                                <Store size={14} className="text-amber-500" />
-                                                <span className="text-sm font-semibold text-gray-800">{item.umkm?.owner || 'N/A'}</span>
+                                                
+                                                <span className="text-sm font-semibold text-gray-900">{item.umkm?.owner || 'N/A'}</span>
                                             </div>
                                         </td>
                                         <td className="py-4 px-6">
@@ -339,13 +338,8 @@ export default function DataProduk() {
                                                 <Tag size={12} /> {item.category}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6 text-center">
-                                            <span className="inline-flex items-center justify-center px-3 py-1 rounded-lg text-xs font-extrabold bg-blue-50 text-blue-950 border border-blue-100">
-                                                {item.quantity ?? 0} unit
-                                            </span>
-                                        </td>
-                                        <td className="py-4 px-6">
-                                            <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase ${item.product_status === 'Selesai Dititip' ? 'bg-emerald-100 text-emerald-700' : item.product_status === 'Retur / Batal' ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'}`}>{item.product_status || 'Masuk ke Mitra'}</span>
+                                        <td className="py-4 px-6 text-center font-bold text-gray-900">
+                                            {item.quantity ?? 0} unit
                                         </td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex justify-end space-x-2">
@@ -478,7 +472,7 @@ export default function DataProduk() {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Kuantitas (Unit) <span className="text-red-500">*</span></label>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Stok (Unit) <span className="text-red-500">*</span></label>
                                 <input
                                     type="number"
                                     min="1"
