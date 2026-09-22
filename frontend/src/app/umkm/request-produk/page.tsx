@@ -87,6 +87,12 @@ export default function RequestProdukUMKM() {
 
   useEffect(() => {
     fetchRequests();
+
+    const intervalId = window.setInterval(() => {
+      void fetchRequests();
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
   }, [fetchRequests]);
 
   const focusRequest = useCallback((requestId: string) => {

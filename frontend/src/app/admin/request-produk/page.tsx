@@ -406,68 +406,68 @@ export default function RequestProdukAdmin() {
                 ) : error ? (
                     <div className="p-8 text-center text-red-500 font-bold bg-red-50">Error: {error}</div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left whitespace-nowrap">
+                    <div className="overflow-hidden">
+                        <table className="w-full text-left border-separate border-spacing-0">
                             <thead>
                                 <tr className="bg-gray-50/80">
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">No</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Request</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Kategori</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Kuantitas</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Harga Produk</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Keuntungan</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Status</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Peserta Tester</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-right">Aksi</th>
+                                    <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">No</th>
+                                    <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Request</th>
+                                    <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Kategori</th>
+                                    <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Qty</th>
+                                    <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Harga</th>
+                                    <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Keuntungan</th>
+                                    <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Status</th>
+                                    <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Tester</th>
+                                    <th className="py-3 px-3 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-right">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {filtered.map((item, index) => (
-                                    <tr key={item.id} className={`transition-colors group ${item.status === "taken" && !item.delivered_to_partner_at ? "bg-amber-50 hover:bg-amber-100/70" : "hover:bg-blue-50/40"}`}>
-                                        <td className="py-4 px-6 text-sm font-bold text-gray-400">{index + 1}</td>
-                                        <td className="py-4 px-6">
-                                            <div className="space-y-1">
-                                                <p className="text-sm font-extrabold text-gray-900">{item.name}</p>
-                                                <p className="text-xs text-gray-500 line-clamp-2 max-w-xs">{item.purpose || 'Tidak ada tujuan'}</p>
+                                    <tr key={item.id} className={`transition-colors group align-top ${item.status === "taken" && !item.delivered_to_partner_at ? "bg-amber-50 hover:bg-amber-100/70" : "hover:bg-blue-50/40"}`}>
+                                        <td className="py-3 px-3 text-sm font-bold text-gray-400 align-top">{index + 1}</td>
+                                        <td className="py-3 px-3 align-top">
+                                            <div className="max-w-55">
+                                                <p className="text-sm font-extrabold text-gray-900 wrap-break-word">{item.name}</p>
+                                                <p className="mt-1 text-xs text-gray-500 wrap-break-word leading-snug">{item.purpose || 'Tidak ada tujuan'}</p>
                                             </div>
                                         </td>
-                                        <td className="py-4 px-6">
-                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-[11px] font-bold uppercase tracking-wider">
-                                                <Tag size={12} /> {item.category}
+                                        <td className="py-3 px-3 align-top">
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                                                <Tag size={11} /> {item.category}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6 text-center font-bold text-gray-700">{item.quantity}</td>
-                                        <td className="py-4 px-6 text-sm font-semibold text-gray-700">
+                                        <td className="py-3 px-3 text-center font-bold text-gray-700 align-top">{item.quantity}</td>
+                                        <td className="py-3 px-3 text-xs font-semibold text-gray-700 align-top">
                                             {item.reference_price !== null && item.reference_price !== undefined
                                                 ? `Rp ${Number(item.reference_price).toLocaleString('id-ID')}`
                                                 : '—'}
                                         </td>
-                                        <td className="py-4 px-6 text-sm font-semibold text-emerald-700">{item.partner_profit ? `Rp ${Number(item.partner_profit).toLocaleString('id-ID')}` : '—'}</td>
-                                        <td className="py-4 px-6">
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${getStatusClasses(item.status)}`}>
+                                        <td className="py-3 px-3 text-xs font-semibold text-emerald-700 align-top">{item.partner_profit ? `Rp ${Number(item.partner_profit).toLocaleString('id-ID')}` : '—'}</td>
+                                        <td className="py-3 px-3 align-top">
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusClasses(item.status)}`}>
                                                 {getStatusLabel(item.status)}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6 text-sm font-semibold text-gray-700">
+                                        <td className="py-3 px-3 text-xs font-semibold text-gray-700 align-top">
                                             {item.offers?.length ? `${item.offers.length} peserta` : "Belum"}
                                         </td>
-                                        <td className="py-4 px-6 text-right">
-                                            <div className="flex items-center justify-end gap-2">
+                                        <td className="py-3 px-3 text-right align-top">
+                                            <div className="flex flex-col sm:flex-row items-end justify-end gap-2">
                                                 {item.offers?.length ? (
                                                     <button
                                                         type="button"
-                                                        className="px-4 py-2 rounded-2xl bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white transition-all text-sm font-semibold cursor-pointer"
+                                                        className="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white transition-all text-xs font-semibold cursor-pointer"
                                                         onClick={() => handleOpenDetail(item.id)}
                                                     >
-                                                        Lihat Peserta
+                                                        Lihat
                                                     </button>
                                                 ) : null}
                                                 <button
-                                                    className="px-4 py-2 rounded-2xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all text-sm font-semibold cursor-pointer"
+                                                    className="px-3 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all text-xs font-semibold cursor-pointer"
                                                     onClick={() => setDeletingRequestId(item.id)}
                                                     title="Hapus Request"
                                                 >
-                                                    <Trash2 size={16} />
+                                                    <Trash2 size={14} />
                                                 </button>
                                             </div>
                                         </td>

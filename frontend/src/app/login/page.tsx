@@ -33,6 +33,9 @@ export default function LoginPage() {
         setError(null);
         setIsLoading(true);
 
+        // Selalu bersihkan session lama sebelum login baru agar tidak tertinggal token/role dari akun sebelumnya.
+        clearAuthToken();
+
         try {
             const response = await fetch(`${API_URL}/api/login`, {
                 method: "POST",
@@ -51,6 +54,7 @@ export default function LoginPage() {
                 } catch {
                     message = rawText;
                 }
+                clearAuthToken();
                 setError(message.slice(0, 200) || "Email atau password salah.");
                 return;
             }
