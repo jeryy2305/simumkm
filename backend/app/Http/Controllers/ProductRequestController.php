@@ -417,16 +417,22 @@ class ProductRequestController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        if ($offer->product_request_id !== $productRequest->id || !in_array($productRequest->status, ['open', 'pending_approval'], true) || $offer->status !== 'pending') {
+        $allowedStatuses = ['open', 'pending_approval', 'fulfilled'];
+
+        if ($offer->product_request_id !== $productRequest->id || !in_array($productRequest->status, $allowedStatuses, true) || $offer->status !== 'pending') {
             return response()->json(['message' => 'Peserta tester tidak dapat diproses'], 422);
         }
 
-        DB::transaction(function () use ($productRequest, $offer) {
+        DB::transaction(function () use ($productRequest, $offer, $allowedStatuses) {
             $lockedRequest = ProductRequest::whereKey($productRequest->id)->lockForUpdate()->firstOrFail();
             $lockedOffer = ProductRequestOffer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
 
-            if (!in_array($lockedRequest->status, ['open', 'pending_approval'], true) || $lockedOffer->status !== 'pending') {
+            if (!in_array($lockedRequest->status, $allowedStatuses, true) || $lockedOffer->status !== 'pending') {
                 abort(422, 'Peserta tester sudah diproses atau request sudah memiliki peserta terpilih');
+            }
+
+            if ($lockedRequest->status === 'fulfilled' && $lockedRequest->offers()->where('status', 'approved')->whereKeyNot($lockedOffer->id)->exists()) {
+                abort(422, 'Request sudah memiliki peserta tester yang disetujui');
             }
 
             $lockedOffer->update(['status' => 'approved']);
@@ -458,7 +464,9 @@ class ProductRequestController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        if ($offer->product_request_id !== $productRequest->id || !in_array($productRequest->status, ['open', 'pending_approval'], true) || $offer->status !== 'pending') {
+        $allowedStatuses = ['open', 'pending_approval', 'fulfilled'];
+
+        if ($offer->product_request_id !== $productRequest->id || !in_array($productRequest->status, $allowedStatuses, true) || $offer->status !== 'pending') {
             return response()->json(['message' => 'Peserta tester tidak dapat diproses'], 422);
         }
 
