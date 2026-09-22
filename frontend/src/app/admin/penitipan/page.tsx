@@ -26,13 +26,18 @@ export default function DataPenitipan() {
     const [notification, setNotification] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
 
     const activeUmkms = umkms.filter((u) => u.status === 'active');
-    const availableProducts = products.filter((p) => p.status === 'available' && p.umkm?.status === 'active');
+    const consignedProductIds = new Set(consignments.map((consignment) => Number(consignment.product_id)));
+    const availableProducts = products.filter((p) =>
+        p.status === 'available' &&
+        p.umkm?.status === 'active' &&
+        !consignedProductIds.has(Number(p.id))
+    );
     const verifiedHotels = hotels.filter((h) => h.verified === true);
     // CRUD States
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editItem, setEditItem] = useState<Consignment | null>(null);
-    const [selectedProductInfo, setSelectedProductInfo] = useState<{ price: number | null; quantity: number | null }>({ price: null, quantity: null });
+    const [selectedProductInfo, setSelectedProductInfo] = useState<{ price: number | null; partner_profit: number | null; hotel_price: number | null; quantity: number | null }>({ price: null, partner_profit: null, hotel_price: null, quantity: null });
     const [formData, setFormData] = useState<FormData>({
         company: '',
         product_id: '',
@@ -40,7 +45,7 @@ export default function DataPenitipan() {
         quantity: 0,
         duration_days: 0,
         start_date: '',
-        status: 'active'
+        status: 'completed'
     });
 
     useEffect(() => {
@@ -103,9 +108,9 @@ export default function DataPenitipan() {
         setFormData({
             company: '', product_id: '', umkm_id: '',
             quantity: 0,
-            duration_days: 30, start_date: new Date().toISOString().split('T')[0], status: 'active'
+            duration_days: 30, start_date: new Date().toISOString().split('T')[0], status: 'completed'
         });
-        setSelectedProductInfo({ price: null, quantity: null });
+        setSelectedProductInfo({ price: null, partner_profit: null, hotel_price: null, quantity: null });
         setIsModalOpen(true);
     };
 
@@ -182,8 +187,13 @@ export default function DataPenitipan() {
             umkm_id: selectedProd ? selectedProd.umkm_id.toString() : '',
             quantity: selectedProd ? selectedProd.quantity : 0
         });
+        const price = selectedProd ? (Number(selectedProd.price) || 0) : 0;
+        const partnerProfit = selectedProd ? (Number(selectedProd.partner_profit) || 0) : 0;
+        const hotelPrice = selectedProd ? (Number(selectedProd.hotel_price) || (price + partnerProfit)) : 0;
         setSelectedProductInfo({
-            price: selectedProd ? (Number(selectedProd.price) || null) : null,
+            price: selectedProd ? price : null,
+            partner_profit: selectedProd ? partnerProfit : null,
+            hotel_price: selectedProd ? hotelPrice : null,
             quantity: selectedProd ? selectedProd.quantity : null
         });
     };
@@ -197,12 +207,14 @@ export default function DataPenitipan() {
                     <h1 className="text-3xl font-extrabold text-blue-950 mb-2">Administrasi Penitipan</h1>
                     <p className="text-gray-500 text-sm md:text-base">Pusat data lalu lintas penyaluran produk UMKM ke perhotelan.</p>
                 </div>
-                <button
-                    onClick={handleAdd}
-                    className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-amber-500 hover:bg-amber-600 text-blue-950 font-extrabold rounded-2xl shadow-lg shadow-amber-500/30 transition-all hover:-translate-y-0.5 active:scale-95 whitespace-nowrap cursor-pointer"
-                >
-                    <Plus size={20} /> Rekam Titipan Baru
-                </button>
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        onClick={handleAdd}
+                        className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-amber-500 hover:bg-amber-600 text-blue-950 font-extrabold rounded-2xl shadow-lg shadow-amber-500/30 transition-all hover:-translate-y-0.5 active:scale-95 whitespace-nowrap cursor-pointer"
+                    >
+                        <Plus size={20} /> Rekam Titipan Baru
+                    </button>
+                </div>
             </div>
 
             {/* Filter and Search Bar */}
@@ -251,7 +263,7 @@ export default function DataPenitipan() {
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Mitra</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Alokasi Tujuan</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Nama Produk</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Harga</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Harga Jual</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Stok</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Kondisi Status</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-right">Opsi</th>
@@ -275,7 +287,7 @@ export default function DataPenitipan() {
                                         <td className="py-5 px-6">
                                             {item.product?.price != null ? (
                                                 <span className="text-sm font-extrabold text-blue-950 bg-blue-50/50 px-2.5 py-1 rounded-lg border border-blue-100">
-                                                    Rp {Number(item.product.price).toLocaleString('id-ID')}
+                                                    Rp {Number(item.product.hotel_price ?? (Number(item.product.price) + Number(item.product.partner_profit || 0))).toLocaleString('id-ID')}
                                                 </span>
                                             ) : (
                                                 <span className="text-xs text-gray-400">—</span>
@@ -291,15 +303,14 @@ export default function DataPenitipan() {
                                             )}
                                         </td>
                                         <td className="py-5 px-6">
-                                            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${item.status === 'active' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                                                item.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
+                                            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${item.status === 'active' || item.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
                                                     'bg-red-50 text-red-700 border-red-200'
                                                 }`}>
                                                 {item.status === 'active' && <Clock size={12} className="shrink-0" />}
                                                 {item.status === 'completed' && <CheckCircle2 size={12} className="shrink-0" />}
                                                 {item.status === 'cancelled' && <XCircle size={12} className="shrink-0" />}
                                                 <span className="text-[10px] font-bold uppercase tracking-wider">
-                                                    {item.status === "active" ? "Masuk" : item.status === "completed" ? "Selesai" : "Retur"}
+                                                    {item.status === "active" || item.status === "completed" ? "Selesai" : "Retur"}
                                                 </span>
                                             </div>
                                         </td>
@@ -341,10 +352,14 @@ export default function DataPenitipan() {
             </div>
 
             {/* Add Modal */}
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Delegasi Penitipan Baru">
-                <form onSubmit={handleSubmit} className="space-y-5 px-1 py-2">
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Delegasi Penitipan Baru" size="lg">
+                <form onSubmit={handleSubmit} className="space-y-6 px-1 py-2">
+                    {/* Step 1: Pilih Produk */}
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Pilih Objek Produk</label>
+                        <div className="flex items-center gap-2 mb-3">
+                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-extrabold">1</span>
+                            <label className="text-xs font-bold uppercase tracking-wider text-gray-700">Pilih Produk</label>
+                        </div>
                         <select
                             required
                             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer"
@@ -358,62 +373,99 @@ export default function DataPenitipan() {
                         </select>
                     </div>
 
-                    {/* Info Produk: Harga & Stok — auto-fill saat produk dipilih */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Harga Produk</label>
-                            <div className={`w-full px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${selectedProductInfo.price !== null
-                                    ? 'bg-gray-50 border-gray-200 text-gray-800'
-                                    : 'bg-gray-50 border-gray-100 text-gray-400'
-                                }`}>
-                                {selectedProductInfo.price !== null
-                                    ? `Rp ${Number(selectedProductInfo.price).toLocaleString('id-ID')}`
-                                    : '— Belum dipilih —'}
+                    {/* Info Produk: Rincian Harga & Stok */}
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5 space-y-4">
+                        <p className="text-[11px] font-extrabold uppercase tracking-[0.15em] text-slate-400">Rincian Produk</p>
+
+                        {/* Harga Produk & Keuntungan Mitra — 2 kolom */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Harga Produk</label>
+                                <div className={`px-3.5 py-2.5 rounded-lg border text-sm font-semibold transition-all ${selectedProductInfo.price !== null
+                                        ? 'bg-white border-gray-200 text-gray-800'
+                                        : 'bg-gray-100/60 border-gray-100 text-gray-400 text-xs'
+                                    }`}>
+                                    {selectedProductInfo.price !== null
+                                        ? `Rp ${Number(selectedProductInfo.price).toLocaleString('id-ID')}`
+                                        : '—'}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Keuntungan Mitra</label>
+                                <div className={`px-3.5 py-2.5 rounded-lg border text-sm font-semibold transition-all ${selectedProductInfo.partner_profit !== null
+                                        ? 'bg-emerald-50/60 border-emerald-200 text-emerald-700'
+                                        : 'bg-gray-100/60 border-gray-100 text-gray-400 text-xs'
+                                    }`}>
+                                    {selectedProductInfo.partner_profit !== null
+                                        ? `+ Rp ${Number(selectedProductInfo.partner_profit).toLocaleString('id-ID')}`
+                                        : '—'}
+                                </div>
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Stok</label>
-                            <div className={`w-full px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${formData.quantity > 0
-                                    ? 'bg-gray-50 border-gray-200 text-gray-800'
-                                    : 'bg-gray-50 border-gray-100 text-gray-400'
-                                }`}>
-                                {formData.quantity > 0
-                                    ? `${formData.quantity} unit`
-                                    : '— Belum dipilih —'}
+
+                        {/* Harga Jual — full width, prominent */}
+                        <div className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all ${selectedProductInfo.hotel_price !== null
+                                ? 'bg-blue-50 border-blue-200'
+                                : 'bg-gray-50 border-gray-100'
+                            }`}>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500">Harga Jual</span>
+                            <span className={`text-base font-extrabold transition-all ${selectedProductInfo.hotel_price !== null ? 'text-blue-700' : 'text-gray-400 text-sm'}`}>
+                                {selectedProductInfo.hotel_price !== null
+                                    ? `Rp ${Number(selectedProductInfo.hotel_price).toLocaleString('id-ID')}`
+                                    : '—'}
+                            </span>
+                        </div>
+
+                        {/* Stok — compact */}
+                        <div className="flex items-center justify-between px-4 py-2.5 rounded-lg bg-white border border-gray-100">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Stok Tersedia</span>
+                            <span className={`text-sm font-bold ${formData.quantity > 0 ? 'text-gray-800' : 'text-gray-400'}`}>
+                                {formData.quantity > 0 ? `${formData.quantity} unit` : '—'}
+                            </span>
+                        </div>
+                        <p className="text-[10px] text-gray-400 font-medium italic -mt-2">* Otomatis mengambil seluruh stok tersedia</p>
+                    </div>
+
+                    {/* Step 2: Tujuan & Tanggal */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-extrabold">2</span>
+                            <label className="text-xs font-bold uppercase tracking-wider text-gray-700">Detail Distribusi</label>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Hotel Tujuan</label>
+                                <select
+                                    required
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer"
+                                    value={formData.company}
+                                    onChange={e => setFormData({ ...formData, company: e.target.value })}
+                                >
+                                    <option value="" disabled>Pilih Hotel...</option>
+                                    {verifiedHotels.length > 0 ? verifiedHotels.map(hotel => (
+                                        <option key={hotel.id} value={hotel.name}>{hotel.name}</option>
+                                    )) : (
+                                        <option value="" disabled>Tidak ada hotel terverifikasi</option>
+                                    )}
+                                </select>
                             </div>
-                            <p className="text-[10px] mt-1 text-gray-400 font-medium italic">* Mengambil seluruh stok tersedia dari katalog</p>
+                            <div>
+                                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Tanggal Berangkat</label>
+                                <input
+                                    type="date"
+                                    required
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm font-semibold text-gray-800"
+                                    value={formData.start_date}
+                                    onChange={e => setFormData({ ...formData, start_date: e.target.value })}
+                                />
+                            </div>
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Tujuan Distribusi (Instansi / Hotel)</label>
-                        <select
-                            required
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer"
-                            value={formData.company}
-                            onChange={e => setFormData({ ...formData, company: e.target.value })}
-                        >
-                            <option value="" disabled>Pilih Hotel Tujuan...</option>
-                            {verifiedHotels.length > 0 ? verifiedHotels.map(hotel => (
-                                <option key={hotel.id} value={hotel.name}>{hotel.name}</option>
-                            )) : (
-                                <option value="" disabled>Tidak ada hotel terverifikasi</option>
-                            )}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Tanggal Berangkat</label>
-                        <input
-                            type="date"
-                            required
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm font-semibold text-gray-800"
-                            value={formData.start_date}
-                            onChange={e => setFormData({ ...formData, start_date: e.target.value })}
-                        />
-                    </div>
+                    {/* Footer */}
                     <div className="flex justify-end pt-5 space-x-3 border-t border-gray-100 mt-6">
-                        <button type="button" className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors" onClick={() => setIsModalOpen(false)}>Kembali</button>
-                        <button type="submit" className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-blue-950 text-sm font-extrabold rounded-xl shadow-lg shadow-amber-500/30 transition-all active:scale-95">Simpan Catatan</button>
+                        <button type="button" className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer" onClick={() => setIsModalOpen(false)}>Kembali</button>
+                        <button type="submit" className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-blue-950 text-sm font-extrabold rounded-xl shadow-lg shadow-amber-500/30 transition-all active:scale-95 cursor-pointer">Simpan Catatan</button>
                     </div>
                 </form>
             </Modal>
@@ -450,8 +502,7 @@ export default function DataPenitipan() {
                                     }
                                 }}
                             >
-                                <option value="active">Masuk</option>
-                                <option value="completed">keluar </option>
+                                <option value="completed">Selesai</option>
                                 <option value="cancelled">Di-Retur / Batal</option>
                             </select>
                         </div>
@@ -462,6 +513,7 @@ export default function DataPenitipan() {
                     </form>
                 )}
             </Modal>
+
         </div>
     );
 }

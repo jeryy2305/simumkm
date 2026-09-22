@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Eye, Plus, Search, Package, Tag, Trash2 } from "lucide-react";
+import { Plus, Search, Package, Tag, Trash2 } from "lucide-react";
 import { Modal } from "@/components/Modal";
 import Toast from "@/components/Toast";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
@@ -20,11 +20,16 @@ interface ProductRequest {
     category: string;
     quantity: number;
     reference_price: number | null;
+    partner_profit?: number | null;
+    hotel_departure_date?: string | null;
+    delivered_to_partner_at?: string | null;
+    history_status?: string;
     price_offered: number | null;
     purpose?: string | null;
-    status: "open" | "pending_approval" | "taken" | "completed" | "cancelled";
+    status: "open" | "pending_approval" | "taken" | "completed" | "cancelled" | "expired" | "fulfilled" | "unfulfilled";
     taken_by_umkm?: UmkmData | null;
-    offers?: Array<{ id: number; price_offered: number; status: string; umkm?: UmkmData | null }>;
+    participation_deadline?: string | null;
+    offers?: Array<{ id: number; price_offered: number; quantity_offered?: number | null; status: string; umkm?: UmkmData | null }>;
 }
 
 interface ProductRequestDetail extends ProductRequest {
@@ -42,6 +47,8 @@ interface RequestForm {
     category: string;
     quantity: number;
     reference_price: string;
+    partner_profit: string;
+    hotel_departure_date: string;
     purpose: string;
 }
 
@@ -54,26 +61,25 @@ export default function RequestProdukAdmin() {
     const [notification, setNotification] = useState<Notification | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [deletingRequestId, setDeletingRequestId] = useState<number | null>(null);
     const [selectedRequest, setSelectedRequest] = useState<ProductRequestDetail | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [detailError, setDetailError] = useState<string | null>(null);
+    const [rejectingRequestId, setRejectingRequestId] = useState<number | null>(null);
+    const [rejectionReason, setRejectionReason] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState<RequestForm>({
         name: "",
         category: "Makanan",
         quantity: 1,
         reference_price: "",
-        purpose: "",
+        partner_profit: "",
+        hotel_departure_date: "",
+        purpose: "Mencari UMKM Penyedia Stok Produk",
     });
 
     const purposeOptions = [
-        { value: "", label: "Pilih tujuan permintaan" },
-        { value: "Menambah Stok Produk", label: "Menambah Stok Produk" },
-        { value: "Memenuhi Permintaan Pelanggan", label: "Memenuhi Permintaan Pelanggan" },
-        { value: "Persiapan Penjualan", label: "Persiapan Penjualan" },
-        { value: "Kebutuhan Event/Promosi", label: "Kebutuhan Event/Promosi" },
-        { value: "Pengembangan Produk Baru", label: "Pengembangan Produk Baru" },
-        { value: "Kerja Sama dengan UMKM", label: "Kerja Sama dengan UMKM" },
-        { value: "Lainnya", label: "Lainnya" },
+        { value: "Mencari UMKM Penyedia Stok Produk", label: "Mencari UMKM Penyedia Stok Produk" },
     ];
 
     useEffect(() => {
@@ -116,12 +122,27 @@ export default function RequestProdukAdmin() {
         }).format(date);
     };
 
+    const formatDepartureDate = (value?: string | null) => {
+        if (!value) return "—";
+        const date = new Date(`${value}T00:00:00`);
+        if (Number.isNaN(date.getTime())) return value;
+        return new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(date);
+    };
+
+    const formatDepartureTime = (value?: string | null) => value ? `${value.slice(0, 5)} WIB` : "—";
+
     const getStatusLabel = (status: string) => {
         switch (status) {
             case "pending_approval":
-                return "Menunggu Persetujuan";
+                return "Menunggu Tester";
             case "taken":
-                return "Sudah Diambil";
+                return "Menunggu Tester";
+            case "fulfilled":
+                return "Terpenuhi";
+            case "unfulfilled":
+                return "Tidak Terpenuhi";
+            case "expired":
+                return "Kedaluwarsa";
             case "completed":
                 return "Selesai";
             case "cancelled":
@@ -134,9 +155,14 @@ export default function RequestProdukAdmin() {
     const getStatusClasses = (status: string) => {
         switch (status) {
             case "pending_approval":
-                return "bg-slate-200 text-slate-700";
+                return "bg-amber-100 text-amber-700";
             case "taken":
+                return "bg-amber-100 text-amber-700";
+            case "fulfilled":
                 return "bg-blue-100 text-blue-700";
+            case "unfulfilled":
+            case "expired":
+                return "bg-slate-200 text-slate-700";
             case "completed":
                 return "bg-purple-100 text-purple-700";
             case "cancelled":
@@ -146,9 +172,40 @@ export default function RequestProdukAdmin() {
         }
     };
 
-    const handleDecision = async (id: number, decision: "approve" | "reject") => {
+    const getDetailStatusClasses = (status?: string) => {
+        switch (status) {
+            case "Terpenuhi":
+            case "Masuk ke Mitra":
+                return "bg-blue-100 text-blue-700";
+            case "Tidak Terpenuhi":
+                return "bg-slate-200 text-slate-700";
+            case "Selesai Dititip":
+                return "bg-emerald-100 text-emerald-700";
+            case "Sudah Diantar":
+                return "bg-blue-100 text-blue-700";
+            case "Menunggu Pengantaran":
+                return "bg-amber-100 text-amber-700";
+            case "Retur":
+                return "bg-rose-100 text-rose-700";
+            case "Menunggu Persetujuan":
+                return "bg-slate-200 text-slate-700";
+            default:
+                return getStatusClasses(selectedRequest?.status || "open");
+        }
+    };
+
+    const getDetailStatusLabel = (request: ProductRequestDetail) => {
+        if (request.status === "unfulfilled") return "Tidak Terpenuhi";
+        if (request.history_status === "Masuk ke Mitra") return "Terpenuhi";
+        return request.history_status || getStatusLabel(request.status);
+    };
+
+    const handleDecision = async (id: number, decision: "approve" | "reject", reason?: string) => {
         try {
-            const response = await authFetch(`${API_URL}/api/product-requests/${id}/${decision}`, { method: "POST" });
+            const response = await authFetch(`${API_URL}/api/product-requests/${id}/${decision}`, {
+                method: "POST",
+                body: decision === "reject" ? JSON.stringify({ rejection_reason: reason }) : undefined,
+            });
             if (!response.ok) {
                 const json = await parseJson<{ message?: string }>(response);
                 throw new Error(json.message || "Gagal memproses request");
@@ -159,10 +216,55 @@ export default function RequestProdukAdmin() {
             setSelectedRequest((previous) => previous?.id === id ? result.request : previous);
             setNotification({
                 type: "success",
-                message: decision === "approve" ? "Request disetujui dan produk masuk katalog." : "Request ditolak dan dibuka kembali untuk UMKM.",
+                message: decision === "approve" ? "Request disetujui. Produk masuk katalog setelah pengantaran dikonfirmasi." : "Request ditolak dan dibuka kembali untuk UMKM.",
             });
         } catch (err: unknown) {
             setNotification({ type: "error", message: err instanceof Error ? err.message : "Terjadi kesalahan saat memproses request" });
+        }
+    };
+
+    const handleRejectSubmit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!rejectingRequestId || rejectionReason.trim().length < 5) return;
+
+        await handleDecision(rejectingRequestId, "reject", rejectionReason.trim());
+        setRejectingRequestId(null);
+        setRejectionReason("");
+    };
+
+    const handleOfferDecision = async (requestId: number, offerId: number, decision: "approve" | "reject") => {
+        try {
+            const response = await authFetch(`${API_URL}/api/product-requests/${requestId}/offers/${offerId}/${decision}`, { method: "POST" });
+            if (!response.ok) {
+                const json = await parseJson<{ message?: string }>(response);
+                throw new Error(json.message || "Gagal memproses peserta tester");
+            }
+
+            const result = await parseJson<{ request: ProductRequest }>(response);
+            setRequests((previous) => previous.map((item) => item.id === requestId ? result.request : item));
+            setSelectedRequest((previous) => previous?.id === requestId ? result.request : previous);
+            setNotification({ type: "success", message: decision === "approve" ? "Peserta disetujui dan produk masuk ke mitra." : "Peserta ditolak." });
+        } catch (err: unknown) {
+            setNotification({ type: "error", message: err instanceof Error ? err.message : "Terjadi kesalahan saat memproses peserta tester" });
+        }
+    };
+
+    const handleConfirmDelivery = async (id: number) => {
+        if (!window.confirm("Pastikan produk sudah diantar ke Mitra. Lanjutkan konfirmasi?")) return;
+
+        try {
+            const response = await authFetch(`${API_URL}/api/product-requests/${id}/confirm-delivery`, { method: "POST" });
+            if (!response.ok) {
+                const json = await parseJson<{ message?: string }>(response);
+                throw new Error(json.message || "Gagal mengonfirmasi pengantaran");
+            }
+
+            const result = await parseJson<{ request: ProductRequest }>(response);
+            setRequests((previous) => previous.map((item) => item.id === id ? result.request : item));
+            setSelectedRequest((previous) => previous?.id === id ? result.request : previous);
+            setNotification({ type: "success", message: "Pengantaran produk berhasil dikonfirmasi." });
+        } catch (err: unknown) {
+            setNotification({ type: "error", message: err instanceof Error ? err.message : "Terjadi kesalahan saat mengonfirmasi pengantaran" });
         }
     };
 
@@ -192,12 +294,16 @@ export default function RequestProdukAdmin() {
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (isSubmitting) return;
+
+        setIsSubmitting(true);
         try {
             const response = await authFetch(`${API_URL}/api/product-requests`, {
                 method: "POST",
                 body: JSON.stringify({
                     ...formData,
-                    reference_price: formData.reference_price === "" ? null : Number(formData.reference_price),
+                    reference_price: Number(formData.reference_price),
+                    partner_profit: Number(formData.partner_profit),
                 }),
             });
 
@@ -215,16 +321,16 @@ export default function RequestProdukAdmin() {
             const newRequest = await parseJson<ProductRequest>(response);
             setRequests([{ ...newRequest, status: newRequest.status ?? 'open' }, ...requests]);
             setIsModalOpen(false);
-            setFormData({ name: "", category: "Makanan", quantity: 1, reference_price: "", purpose: "" });
+            setFormData({ name: "", category: "Makanan", quantity: 1, reference_price: "", partner_profit: "", hotel_departure_date: "", purpose: "Mencari UMKM Penyedia Stok Produk" });
             setNotification({ type: "success", message: "Request produk berhasil dibuat." });
         } catch (err: unknown) {
             setNotification({ type: "error", message: err instanceof Error ? err.message : "Terjadi kesalahan saat menyimpan request" });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const handleDelete = async (id: number) => {
-        if (!window.confirm("Hapus request produk ini?")) return;
-
         try {
             const response = await authFetch(`${API_URL}/api/product-requests/${id}`, {
                 method: "DELETE",
@@ -234,6 +340,8 @@ export default function RequestProdukAdmin() {
             setNotification({ type: "success", message: "Request produk berhasil dihapus." });
         } catch (err: unknown) {
             setNotification({ type: "error", message: err instanceof Error ? err.message : "Terjadi kesalahan saat menghapus request" });
+        } finally {
+            setDeletingRequestId(null);
         }
     };
 
@@ -306,16 +414,16 @@ export default function RequestProdukAdmin() {
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Request</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Kategori</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Kuantitas</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Budget</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Harga UMKM</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Harga Produk</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Keuntungan</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Status</th>
-                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">UMKM</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Peserta Tester</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-right">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {filtered.map((item, index) => (
-                                    <tr key={item.id} className="hover:bg-blue-50/40 transition-colors group">
+                                    <tr key={item.id} className={`transition-colors group ${item.status === "taken" && !item.delivered_to_partner_at ? "bg-amber-50 hover:bg-amber-100/70" : "hover:bg-blue-50/40"}`}>
                                         <td className="py-4 px-6 text-sm font-bold text-gray-400">{index + 1}</td>
                                         <td className="py-4 px-6">
                                             <div className="space-y-1">
@@ -329,44 +437,34 @@ export default function RequestProdukAdmin() {
                                             </span>
                                         </td>
                                         <td className="py-4 px-6 text-center font-bold text-gray-700">{item.quantity}</td>
-                                        <td className="py-4 px-6 text-sm font-semibold text-gray-700">{item.reference_price ? `Rp ${Number(item.reference_price).toLocaleString('id-ID')}` : '—'}</td>
                                         <td className="py-4 px-6 text-sm font-semibold text-gray-700">
-                                            {item.status === "pending_approval" && item.offers?.length
-                                                ? item.offers.filter((offer) => offer.status === "pending").map((offer) => `Rp ${Number(offer.price_offered).toLocaleString('id-ID')}`).join(", ")
-                                                : item.price_offered ? `Rp ${Number(item.price_offered).toLocaleString('id-ID')}` : '—'}
+                                            {item.reference_price !== null && item.reference_price !== undefined
+                                                ? `Rp ${Number(item.reference_price).toLocaleString('id-ID')}`
+                                                : '—'}
                                         </td>
+                                        <td className="py-4 px-6 text-sm font-semibold text-emerald-700">{item.partner_profit ? `Rp ${Number(item.partner_profit).toLocaleString('id-ID')}` : '—'}</td>
                                         <td className="py-4 px-6">
                                             <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${getStatusClasses(item.status)}`}>
                                                 {getStatusLabel(item.status)}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-6 text-sm font-semibold text-gray-700">{item.taken_by_umkm?.owner || 'Belum'}</td>
+                                        <td className="py-4 px-6 text-sm font-semibold text-gray-700">
+                                            {item.offers?.length ? `${item.offers.length} peserta` : "Belum"}
+                                        </td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    className="px-4 py-2 rounded-2xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all text-sm font-semibold cursor-pointer"
-                                                    onClick={() => handleOpenDetail(item.id)}
-                                                    title="Lihat Detail Request"
-                                                >
-                                                    <Eye size={16} />
-                                                </button>
-                                                {item.status === "pending_approval" ? (
-                                                    <>
-                                                        <button
-                                                            className="px-4 py-2 rounded-2xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all text-sm font-semibold cursor-pointer"
-                                                            onClick={() => void handleDecision(item.id, "approve")}
-                                                            title="Setujui penawaran"
-                                                        >Setujui</button>
-                                                        <button
-                                                            className="px-4 py-2 rounded-2xl bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white transition-all text-sm font-semibold cursor-pointer"
-                                                            onClick={() => void handleDecision(item.id, "reject")}
-                                                            title="Tolak penawaran"
-                                                        >Tolak</button>
-                                                    </>
+                                                {item.offers?.length ? (
+                                                    <button
+                                                        type="button"
+                                                        className="px-4 py-2 rounded-2xl bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white transition-all text-sm font-semibold cursor-pointer"
+                                                        onClick={() => handleOpenDetail(item.id)}
+                                                    >
+                                                        Lihat Peserta
+                                                    </button>
                                                 ) : null}
                                                 <button
                                                     className="px-4 py-2 rounded-2xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all text-sm font-semibold cursor-pointer"
-                                                    onClick={() => handleDelete(item.id)}
+                                                    onClick={() => setDeletingRequestId(item.id)}
                                                     title="Hapus Request"
                                                 >
                                                     <Trash2 size={16} />
@@ -377,7 +475,7 @@ export default function RequestProdukAdmin() {
                                 ))}
                                 {filtered.length === 0 && (
                                     <tr>
-                                        <td colSpan={8} className="py-16 text-center text-gray-500">
+                                        <td colSpan={9} className="py-16 text-center text-gray-500">
                                             <div className="flex flex-col items-center justify-center gap-2">
                                                 <Package size={40} className="text-gray-300" />
                                                 <p className="font-bold text-gray-700">Tidak ada request produk.</p>
@@ -412,8 +510,8 @@ export default function RequestProdukAdmin() {
                                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-600">Request</p>
                                     <h3 className="mt-1 text-xl font-extrabold text-gray-900">{selectedRequest.name}</h3>
                                 </div>
-                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${getStatusClasses(selectedRequest.status)}`}>
-                                    {getStatusLabel(selectedRequest.status)}
+                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${getDetailStatusClasses(selectedRequest.history_status)}`}>
+                                    {getDetailStatusLabel(selectedRequest)}
                                 </span>
                             </div>
                         </div>
@@ -432,14 +530,16 @@ export default function RequestProdukAdmin() {
                                 <p className="mt-2 text-sm font-semibold text-gray-800">{selectedRequest.quantity}</p>
                             </div>
                             <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Budget Referensi</p>
-                                <p className="mt-2 text-sm font-semibold text-gray-800">
-                                    {selectedRequest.reference_price ? `Rp ${Number(selectedRequest.reference_price).toLocaleString("id-ID")}` : "—"}
-                                </p>
-                            </div>
-                            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
                                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Tujuan Permintaan</p>
                                 <p className="mt-2 text-sm font-semibold text-gray-800">{selectedRequest.purpose || "—"}</p>
+                            </div>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Harga Keuntungan Mitra</p>
+                                <p className="mt-2 text-sm font-semibold text-gray-800">{selectedRequest.partner_profit ? `Rp ${Number(selectedRequest.partner_profit).toLocaleString("id-ID")}` : "—"}</p>
+                            </div>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Tanggal Tester</p>
+                                <p className="mt-2 text-sm font-semibold text-gray-800">{formatDepartureDate(selectedRequest.hotel_departure_date)}</p>
                             </div>
                             <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
                                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Tanggal Dibuat</p>
@@ -448,117 +548,292 @@ export default function RequestProdukAdmin() {
                         </div>
 
                         <div className="rounded-3xl border border-gray-100 bg-gray-50 p-5">
-                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Data UMKM yang Mengambil</p>
-                            {(() => {
-                                const umkmData = selectedRequest.taken_by_umkm ?? selectedRequest.takenByUmkm;
-                                if (!umkmData) {
-                                    return <p className="mt-3 text-sm font-semibold text-gray-600">Belum ada UMKM yang mengambil request ini.</p>;
-                                }
-
-                                return (
-                                    <div className="mt-4 space-y-3">
-                                        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                                            <p className="text-sm font-extrabold text-gray-900">{umkmData.name}</p>
-                                            <div className="mt-2 space-y-1 text-sm text-gray-600">
-                                                <p><span className="font-semibold text-gray-700">Pemilik:</span> {umkmData.owner}</p>
-                                                {umkmData.phone ? <p><span className="font-semibold text-gray-700">Telepon:</span> {umkmData.phone}</p> : null}
-                                                {umkmData.address ? <p><span className="font-semibold text-gray-700">Alamat:</span> {umkmData.address}</p> : null}
-                                                <p><span className="font-semibold text-gray-700">Harga yang Ditawarkan:</span> {selectedRequest.price_offered ? `Rp ${Number(selectedRequest.price_offered).toLocaleString("id-ID")}` : "—"}</p>
+                            <div className="flex items-center justify-between gap-3">
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Peserta Tester</p>
+                                <span className="rounded-full bg-blue-100 px-3 py-1 text-[11px] font-bold text-blue-700">
+                                    {selectedRequest.offers?.length || 0} peserta
+                                </span>
+                            </div>
+                            {selectedRequest.offers?.length ? (
+                                <div className="mt-4 space-y-3">
+                                    {selectedRequest.offers.map((offer) => (
+                                        <div key={offer.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:border-blue-200">
+                                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="text-sm font-extrabold text-gray-900">{offer.umkm?.name || "UMKM"}</p>
+                                                </div>
+                                                <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase ${offer.status === "approved" ? "bg-emerald-100 text-emerald-700" : offer.status === "rejected" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}>
+                                                    {offer.status === "approved" ? "Disetujui" : offer.status === "rejected" ? "Ditolak" : "Menunggu Tester"}
+                                                </span>
                                             </div>
+                                            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-gray-100 pt-3">
+                                                <div>
+                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Harga Produk</p>
+                                                    <p className="mt-1 text-sm font-bold text-gray-800">Rp {Number(offer.price_offered).toLocaleString("id-ID")}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Stok</p>
+                                                    <p className="mt-1 text-sm font-bold text-gray-800">{offer.quantity_offered || selectedRequest.quantity} unit</p>
+                                                </div>
+                                            </div>
+                                            {offer.status === "pending" ? (
+                                                <div className="mt-4 flex justify-end gap-2">
+                                                    <button
+                                                        type="button"
+                                                        className="rounded-xl bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-600 hover:text-white"
+                                                        onClick={() => void handleOfferDecision(selectedRequest.id, offer.id, "approve")}
+                                                    >
+                                                        Setujui Tester
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="rounded-xl bg-rose-50 px-4 py-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-600 hover:text-white"
+                                                        onClick={() => void handleOfferDecision(selectedRequest.id, offer.id, "reject")}
+                                                    >
+                                                        Tolak
+                                                    </button>
+                                                </div>
+                                            ) : null}
                                         </div>
-                                    </div>
-                                );
-                            })()}
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="mt-3 text-sm font-semibold text-gray-600">Belum ada UMKM yang mengambil request ini.</p>
+                            )}
                         </div>
                     </div>
                 ) : null}
             </Modal>
 
             <Modal
+                isOpen={rejectingRequestId !== null}
+                onClose={() => {
+                    setRejectingRequestId(null);
+                    setRejectionReason("");
+                }}
+                title="Alasan Penolakan"
+            >
+                <form onSubmit={handleRejectSubmit} className="space-y-5 px-1 py-2">
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2" htmlFor="rejection-reason">
+                            Alasan penolakan
+                        </label>
+                        <textarea
+                            id="rejection-reason"
+                            required
+                            minLength={5}
+                            rows={4}
+                            value={rejectionReason}
+                            onChange={(event) => setRejectionReason(event.target.value)}
+                            placeholder="Tuliskan alasan penolakan agar dapat diketahui UMKM"
+                            className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition-all focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-600/20"
+                        />
+                        <p className="mt-2 text-xs text-gray-500">Minimal 5 karakter.</p>
+                    </div>
+                    <div className="flex justify-end gap-3 border-t border-gray-100 pt-5">
+                        <button
+                            type="button"
+                            className="rounded-xl px-6 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-100"
+                            onClick={() => {
+                                setRejectingRequestId(null);
+                                setRejectionReason("");
+                            }}
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={rejectionReason.trim().length < 5}
+                            className="rounded-xl bg-amber-500 px-6 py-2.5 text-sm font-bold text-blue-950 transition-all hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            Tolak Request
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+
+            <Modal
+                isOpen={deletingRequestId !== null}
+                onClose={() => setDeletingRequestId(null)}
+                title="Hapus Request Produk"
+            >
+                <div className="space-y-5 px-1 py-2">
+                    <div role="alert" className="flex gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-rose-900">
+                        <Trash2 size={20} className="mt-0.5 shrink-0 text-rose-600" />
+                        <div>
+                            <p className="text-sm font-extrabold">Konfirmasi penghapusan</p>
+                            <p className="mt-1 text-sm leading-6">
+                                Apakah Anda yakin ingin menghapus request <strong>{requests.find((item) => item.id === deletingRequestId)?.name || "ini"}</strong>? Data yang dihapus tidak dapat dikembalikan.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-3 border-t border-gray-100 pt-5">
+                        <button
+                            type="button"
+                            className="rounded-xl border border-gray-200 bg-white px-6 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-50"
+                            onClick={() => setDeletingRequestId(null)}
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="button"
+                            className="rounded-xl bg-rose-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-rose-600/20 transition-all hover:bg-rose-700 active:scale-95"
+                            onClick={() => {
+                                if (deletingRequestId !== null) void handleDelete(deletingRequestId);
+                            }}
+                        >
+                            Hapus Request
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 title="Buat Request Produk Baru"
+                size="lg"
             >
-                <form onSubmit={handleSubmit} className="space-y-5 px-1 py-2">
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Nama Produk</label>
-                        <input
-                            type="text"
-                            required
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            placeholder="Contoh: Sambal Korek Instan"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Kategori</label>
-                            <select
-                                required
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer"
-                                value={formData.category}
-                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                            >
-                                <option value="Makanan">Makanan</option>
-                                <option value="Minuman">Minuman</option>
-                                <option value="Lainnya">Lainnya</option>
-                            </select>
+                <form onSubmit={handleSubmit} className="space-y-6 px-1 py-1">
+                    {/* Step 1: Informasi Produk */}
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4 space-y-4">
+                        <div className="flex items-center gap-2 border-b border-gray-200/60 pb-2.5">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">1</span>
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">Informasi Produk</h4>
                         </div>
+
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Kuantitas</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Nama Produk</label>
                             <input
-                                type="number"
-                                min="1"
+                                type="text"
                                 required
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800"
-                                value={formData.quantity}
-                                onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 shadow-sm"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                placeholder="Contoh: Sambal Korek Instan"
                             />
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Budget Referensi</label>
-                            <input
-                                type="number"
-                                min="0"
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800"
-                                value={formData.reference_price}
-                                onChange={(e) => setFormData({ ...formData, reference_price: e.target.value })}
-                                placeholder="Opsional"
-                            />
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Kategori</label>
+                                <select
+                                    required
+                                    className="w-full px-3.5 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer shadow-sm"
+                                    value={formData.category}
+                                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                >
+                                    <option value="Makanan">Makanan</option>
+                                    <option value="Minuman">Minuman</option>
+                                    <option value="Lainnya">Lainnya</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Stok yang Dibutuhkan</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    required
+                                    className="w-full px-3.5 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 shadow-sm"
+                                    value={formData.quantity || ''}
+                                    onChange={(e) => {
+                                        const raw = e.target.value.replace(/^0+/, '');
+                                        setFormData({ ...formData, quantity: raw === '' ? 0 : Number(raw) });
+                                    }}
+                                    placeholder="Contoh: 10"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Tujuan Permintaan</label>
+                                <select
+                                    required
+                                    value={formData.purpose}
+                                    onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
+                                    className="w-full px-3.5 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer shadow-sm"
+                                >
+                                    {purposeOptions.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Tujuan Permintaan</label>
-                        <select
-                            required
-                            value={formData.purpose}
-                            onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer"
-                        >
-                            {purposeOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
+                    {/* Step 2: Ketentuan & Jadwal */}
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4 space-y-4">
+                        <div className="flex items-center gap-2 border-b border-gray-200/60 pb-2.5">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">2</span>
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">Harga & Jadwal</h4>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Harga Produk</label>
+                                <div className="flex items-center rounded-xl border border-gray-200 bg-white shadow-sm transition-all focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600/20">
+                                    <span className="pl-3.5 text-xs font-bold text-gray-400">Rp</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        required
+                                        className="w-full bg-transparent px-2 py-3 outline-none text-sm font-semibold text-gray-800"
+                                        value={formData.reference_price}
+                                        onChange={(e) => setFormData({ ...formData, reference_price: e.target.value })}
+                                        placeholder="0"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Keuntungan Mitra</label>
+                                <div className="flex items-center rounded-xl border border-gray-200 bg-white shadow-sm transition-all focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600/20">
+                                    <span className="pl-3.5 text-xs font-bold text-gray-400">Rp</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        required
+                                        className="w-full bg-transparent px-2 py-3 outline-none text-sm font-semibold text-gray-800"
+                                        value={formData.partner_profit || ''}
+                                        onChange={(e) => {
+                                            const raw = e.target.value.replace(/^0+/, '');
+                                            setFormData({ ...formData, partner_profit: raw });
+                                        }}
+                                        placeholder="0"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Pengantaran Tester</label>
+                                <input
+                                    type="date"
+                                    required
+                                    className="w-full px-3.5 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 shadow-sm cursor-pointer"
+                                    value={formData.hotel_departure_date}
+                                    onChange={(e) => setFormData({ ...formData, hotel_departure_date: e.target.value })}
+                                />
+                            </div>
+
+                        </div>
                     </div>
 
-                    <div className="flex justify-end pt-5 space-x-3 border-t border-gray-100 mt-6">
+                    <div className="flex justify-end pt-3 space-x-3 border-t border-gray-100">
                         <button
                             type="button"
-                            className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                            disabled={isSubmitting}
+                            className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
                             onClick={() => setIsModalOpen(false)}
                         >
                             Batalkan
                         </button>
                         <button
                             type="submit"
-                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all active:scale-95"
+                            disabled={isSubmitting}
+                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/20 transition-all active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            Simpan Request
+                            {isSubmitting ? "Menyimpan..." : "Simpan Request"}
                         </button>
                     </div>
                 </form>

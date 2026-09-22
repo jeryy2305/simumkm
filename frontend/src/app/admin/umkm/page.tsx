@@ -290,87 +290,110 @@ export default function DataUMKM() {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 title={editItem ? "Edit Profil Mitra UMKM" : "Registrasi Mitra UMKM Baru"}
+                size="lg"
             >
-                <form onSubmit={handleSubmit} className="space-y-5 px-1 py-2">
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Nama Pemilik / Eksekutor</label>
-                        <input
-                            type="text"
-                            required
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800"
-                            value={formData.owner}
-                            onChange={e => setFormData({ ...formData, owner: e.target.value })}
-                            placeholder="Contoh: Budi Santoso"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Alamat Email (Akun)</label>
-                        <input
-                            type="email"
-                            required
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800"
-                            value={formData.email}
-                            onChange={e => setFormData({ ...formData, email: e.target.value })}
-                            placeholder="budi@example.com"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Alamat</label>
-                        <input
-                            type="text"
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800"
-                            placeholder="Alamat lengkap (opsional)"
-                            value={formData.address}
-                            onChange={e => setFormData({ ...formData, address: e.target.value })}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Kata Sandi (Auth)</label>
-                        <div className="relative">
-                            <input
-                                type={editItem ? 'password' : 'password'}
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800"
-                                placeholder={editItem ? "Kosongkan jika tidak ingin mengubah password..." : "Minimal 8 karakter..."}
-                                value={formData.password}
-                                onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                required={!editItem}
-                            />
+                <form onSubmit={handleSubmit} className="space-y-5 px-1 py-1">
+                    {/* Step 1: Informasi Mitra */}
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4 space-y-4">
+                        <div className="flex items-center gap-2 border-b border-gray-200/60 pb-2.5">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">1</span>
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">Informasi Pemilik & Kontak</h4>
                         </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Nama Pemilik / Eksekutor</label>
+                                <input
+                                    type="text"
+                                    required
+                                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 shadow-sm"
+                                    value={formData.owner}
+                                    onChange={e => setFormData({ ...formData, owner: e.target.value })}
+                                    placeholder="Contoh: Budi Santoso"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">No. WhatsApp</label>
+                                <input
+                                    type="text"
+                                    required
+                                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 shadow-sm"
+                                    value={formData.phone}
+                                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                    placeholder="08123456789"
+                                />
+                            </div>
+                        </div>
+
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">No. WhatsApp</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Alamat Lengkap</label>
                             <input
                                 type="text"
-                                required
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800"
-                                value={formData.phone}
-                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                placeholder="08123456"
+                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 shadow-sm"
+                                placeholder="Alamat usaha / domisili lengkap (opsional)"
+                                value={formData.address}
+                                onChange={e => setFormData({ ...formData, address: e.target.value })}
                             />
                         </div>
+                    </div>
+
+                    {/* Step 2: Akun & Tanggal Kemitraan */}
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4 space-y-4">
+                        <div className="flex items-center gap-2 border-b border-gray-200/60 pb-2.5">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">2</span>
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">Autentikasi Akun & Tanggal Kemitraan</h4>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Alamat Email (Akun Login)</label>
+                                <input
+                                    type="email"
+                                    required
+                                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 shadow-sm"
+                                    value={formData.email}
+                                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                    placeholder="budi@example.com"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Kata Sandi (Auth)</label>
+                                <input
+                                    type="password"
+                                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 shadow-sm"
+                                    placeholder={editItem ? "Kosongkan jika tidak diubah..." : "Minimal 8 karakter..."}
+                                    value={formData.password}
+                                    onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                    required={!editItem}
+                                />
+                            </div>
+                        </div>
+
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Tanggal Mulai Mitra</label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Tanggal Mulai Mitra</label>
                             <input
                                 type="date"
                                 required
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800"
+                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all text-sm font-semibold text-gray-800 shadow-sm cursor-pointer"
                                 value={formData.join_date}
                                 onChange={e => setFormData({ ...formData, join_date: e.target.value })}
                             />
                         </div>
                     </div>
-                    <div className="flex justify-end pt-5 space-x-3 border-t border-gray-100 mt-6">
+
+                    <div className="flex justify-end pt-3 space-x-3 border-t border-gray-100">
                         <button
                             type="button"
-                            className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+                            className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
                             onClick={() => setIsModalOpen(false)}
                         >
                             Batalkan
                         </button>
                         <button
                             type="submit"
-                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all active:scale-95 cursor-pointer"
+                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-600/20 transition-all active:scale-95 cursor-pointer"
                         >
                             {editItem ? "Simpan Perubahan" : "Daftarkan UMKM"}
                         </button>

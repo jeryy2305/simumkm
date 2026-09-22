@@ -65,9 +65,12 @@ export interface Product {
   name: string;
   category?: string;
   price: number | string;
+  partner_profit?: number | string;
+  hotel_price?: number | string;
   quantity: number;
   description?: string;
   status: "available" | "unavailable";
+  product_status?: "Masuk ke Mitra" | "Selesai Dititip" | "Retur / Batal";
   umkm_id: number | string;
   has_completed_consignment?: boolean;
   umkm?: Partial<Umkm> & { status?: string; owner?: string; name?: string };

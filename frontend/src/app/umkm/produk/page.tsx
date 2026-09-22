@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Clock, AlertCircle } from "lucide-react";
+import { Search, AlertCircle } from "lucide-react";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
 import FloatingWhatsAppButton from "@/components/FloatingWhatsAppButton";
 
@@ -144,21 +144,18 @@ export default function ProdukUMKM() {
                       <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Status</span>
                       {product.ui_status === 'returned' ? (
                         <span className="inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700">Retur</span>
-                      ) : product.ui_status === 'in_transit' ? (
-                        <span className="inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700">Dalam Penyaluran</span>
-                      ) : product.ui_status === 'pending_review' ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-sky-100 text-sky-700">
-                          <Clock size={12} /> Sedang Ditinjau
-                        </span>
-                      ) : product.ui_status === 'ready' ? (
+                      ) : product.ui_status === 'dititipkan' ? (
                         <span className="inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700">Selesai Dititip</span>
                       ) : (
-                        <span className="inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700">Habis</span>
+                        <span className="inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700">Masuk ke Mitra</span>
                       )}
                     </div>
                   </div>
 
-                  <p className="text-base md:text-lg font-extrabold text-blue-700 mt-auto">Rp {Number(product.price).toLocaleString('id-ID')}</p>
+                  <div className="mt-auto flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Harga Anda</span>
+                    <p className="text-base font-extrabold text-blue-700">Rp {Number(product.price).toLocaleString('id-ID')}</p>
+                  </div>
                 </div>
               </div>
             ))}

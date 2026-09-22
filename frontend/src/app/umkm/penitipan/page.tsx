@@ -5,8 +5,17 @@ import { ClipboardList, MapPin, Package, XCircle, AlertCircle } from "lucide-rea
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
 import FloatingWhatsAppButton from "@/components/FloatingWhatsAppButton";
 
+interface CatalogProduct {
+  id: number;
+  name: string;
+  quantity: number;
+  created_at?: string;
+  ui_status?: string;
+}
+
 export default function PenitipanUMKM() {
   const [consignments, setConsignments] = useState<any[]>([]);
+  const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('active');
@@ -43,6 +52,14 @@ export default function PenitipanUMKM() {
           console.error("Penitipan UMKM fetch failed", errorMessage);
           setError(errorMessage);
         }
+
+        const productsRes = await authFetch(`${API_URL}/api/umkm-user/products`);
+        if (productsRes.ok) {
+          const products = await parseJson<CatalogProduct[]>(productsRes);
+          setCatalogProducts(products.filter((product) => product.ui_status === "masuk"));
+        } else if (productsRes.status === 403) {
+          setUmkmStatus("inactive");
+        }
       } catch (err) {
         console.error("Fetch consignments failed", err);
         setError(err instanceof Error ? err.message : "Terjadi kesalahan jaringan");
@@ -53,7 +70,16 @@ export default function PenitipanUMKM() {
     fetchData();
   }, []);
 
-  const filteredConsignments = consignments.filter(c => filterStatus === 'all' || c.status === filterStatus);
+  const incomingProducts = catalogProducts.map((product) => ({
+    id: `product-${product.id}`,
+    isCatalogEntry: true,
+    company: "Menunggu Data Penitipan",
+    product,
+    quantity: product.quantity,
+    status: "active",
+    start_date: product.created_at,
+  }));
+  const filteredConsignments = [...incomingProducts, ...consignments].filter(c => filterStatus === 'all' || c.status === filterStatus);
 
   if (umkmStatus === "inactive") {
     return (
@@ -93,7 +119,7 @@ export default function PenitipanUMKM() {
           className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${filterStatus === 'active' ? 'bg-white text-blue-700 shadow-sm ring-1 ring-black/5' : 'text-gray-500 hover:text-gray-800'}`}
           onClick={() => setFilterStatus('active')}
         >
-          Aktif Bergerak
+          Masuk ke Mitra
         </button>
         <button
           className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${filterStatus === 'completed' ? 'bg-white text-blue-700 shadow-sm ring-1 ring-black/5' : 'text-gray-500 hover:text-gray-800'}`}
@@ -136,20 +162,19 @@ export default function PenitipanUMKM() {
               key={item.id}
               className="group relative overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg"
             >
-              <div className={`absolute inset-y-0 left-0 w-1.5 rounded-r-full transition-colors ${item.status === 'active' ? 'bg-amber-400' : item.status === 'completed' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <div className={`absolute inset-y-0 left-0 w-1.5 rounded-r-full transition-colors ${item.isCatalogEntry ? 'bg-blue-500' : item.status === 'completed' ? 'bg-green-500' : 'bg-red-500'}`}></div>
 
               <div className="flex flex-col gap-3 pl-3">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 space-y-2">
-                    <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-700">trx-{item.id}</span>
                     <div className="flex items-center gap-2 text-slate-900 sm:text-lg">
                       <MapPin size={16} className="text-blue-400 shrink-0" />
                       <h3 className="truncate text-base font-semibold text-slate-900 sm:text-lg">{item.company}</h3>
                     </div>
                   </div>
                   <div className="flex flex-col items-start gap-1 text-right sm:items-end">
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.24em] ${item.status === 'active' ? 'bg-amber-100 text-amber-700' : item.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {item.status === 'active' ? 'Dalam Penyaluran' : item.status === 'completed' ? 'Selesai Dititip' : 'Retur'}
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.24em] ${item.isCatalogEntry ? 'bg-blue-100 text-blue-700' : item.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {item.isCatalogEntry ? 'Masuk ke Mitra' : item.status === 'completed' ? 'Selesai Dititip' : 'Retur / Batal'}
                     </span>
                     <span className="text-[11px] text-slate-500 uppercase tracking-[0.24em]">{new Date(item.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                   </div>

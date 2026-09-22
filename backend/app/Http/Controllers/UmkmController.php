@@ -82,6 +82,14 @@ class UmkmController extends Controller
         ]);
 
         $umkm->update(['status' => $request->status]);
+        if ($umkm->user_id) {
+            \App\Services\AppNotificationService::notifyUser(
+                (int) $umkm->user_id,
+                'Status akun diperbarui',
+                $request->status === 'active' ? 'Akun UMKM Anda telah diaktifkan oleh Admin.' : 'Akun UMKM Anda dinonaktifkan oleh Admin.',
+                '/umkm/profile'
+            );
+        }
         return response()->json($umkm->load('user'));
     }
 

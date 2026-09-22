@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Consignment;
 use App\Models\Product;
+use App\Models\ProductRequest;
 use App\Models\Umkm;
 use Illuminate\Support\Facades\Auth;
 
@@ -28,15 +29,33 @@ class UmkmUserDashboardController extends Controller
             return response()->json(['message' => 'UMKM profile not found'], 404);
         }
 
-        $totalTitipan = Consignment::where('umkm_id', $umkm->id)->count();
-        $produkAktif = Product::where('umkm_id', $umkm->id)->where('status', 'available')->count();
+        $produkAktif = Product::where('umkm_id', $umkm->id)
+            ->where('status', 'available')
+            ->whereDoesntHave('consignments', function ($query) {
+                $query->whereIn('status', ['active', 'completed', 'cancelled']);
+            })
+            ->count();
+        $totalTitipan = Consignment::where('umkm_id', $umkm->id)
+            ->whereIn('status', ['active', 'completed'])
+            ->count() + $produkAktif;
         $selesai = Consignment::where('umkm_id', $umkm->id)->where('status', 'completed')->count();
 
-        $recentConsignments = Consignment::with('product:id,name,quantity')
+        $recentConsignments = Consignment::with('product:id,name,category,quantity')
                     ->where('umkm_id', $umkm->id)
                                 ->orderBy('created_at', 'desc')
-                                ->take(5)
                                 ->get();
+
+        $recentProductDeliveries = ProductRequest::where('taken_by_umkm_id', $umkm->id)
+                    ->whereNotNull('delivered_to_partner_at')
+                    ->orderBy('delivered_to_partner_at', 'desc')
+                    ->get();
+
+        $recentCatalogProducts = Product::where('umkm_id', $umkm->id)
+                    ->whereDoesntHave('consignments', function ($query) {
+                        $query->whereIn('status', ['active', 'completed', 'cancelled']);
+                    })
+                    ->orderBy('created_at', 'desc')
+                    ->get();
         
         $activities = [];
         foreach ($recentConsignments as $c) {
@@ -46,9 +65,62 @@ class UmkmUserDashboardController extends Controller
                 'status' => $c->status === 'completed' ? 'Selesai' : ($c->status === 'active' ? 'Proses' : 'Batal'),
                 'date' => $c->created_at->diffForHumans(),
                 'amount' => ($c->product ? $c->product->quantity : 0) . ' ' . ($c->product ? $c->product->name : 'N/A'),
-                'type' => 'consignment'
+                'type' => 'consignment',
+                '_timestamp' => $c->created_at,
             ];
         }
+
+        foreach ($recentProductDeliveries as $productRequest) {
+            $hasConsignmentActivity = $recentConsignments->contains(function ($consignment) use ($productRequest) {
+                return $consignment->product
+                    && mb_strtolower(trim($consignment->product->name)) === mb_strtolower(trim($productRequest->name))
+                    && $consignment->product->category === $productRequest->category;
+            });
+
+            if ($hasConsignmentActivity) {
+                continue;
+            }
+
+            $activities[] = [
+                'id' => 'PR-' . $productRequest->id,
+                'title' => 'Produk masuk ke Mitra',
+                'status' => 'Masuk ke Mitra',
+                'date' => $productRequest->delivered_to_partner_at->diffForHumans(),
+                'amount' => $productRequest->quantity . ' ' . $productRequest->name,
+                'type' => 'request',
+                '_timestamp' => $productRequest->delivered_to_partner_at,
+            ];
+        }
+
+        foreach ($recentCatalogProducts as $product) {
+            $isDeliveryActivity = $recentProductDeliveries->contains(function ($productRequest) use ($product) {
+                return $productRequest->name === $product->name
+                    && $productRequest->category === $product->category
+                    && (int) $productRequest->quantity === (int) $product->quantity;
+            });
+
+            if ($isDeliveryActivity) {
+                continue;
+            }
+
+            $activities[] = [
+                'id' => 'P-' . $product->id,
+                'title' => 'Produk masuk ke Mitra',
+                'status' => 'Masuk ke Mitra',
+                'date' => $product->created_at->diffForHumans(),
+                'amount' => $product->quantity . ' ' . $product->name,
+                'type' => 'request',
+                '_timestamp' => $product->created_at,
+            ];
+        }
+
+        usort($activities, fn (array $first, array $second) =>
+            $second['_timestamp']->getTimestamp() <=> $first['_timestamp']->getTimestamp()
+        );
+        $activities = array_map(function (array $activity) {
+            unset($activity['_timestamp']);
+            return $activity;
+        }, array_slice($activities, 0, 5));
 
         return response()->json([
             'umkm' => $umkm,
@@ -82,7 +154,7 @@ class UmkmUserDashboardController extends Controller
         }
 
         $products = Product::where('umkm_id', $umkm->id)
-            ->select('id', 'name', 'category', 'price', 'status', 'quantity', 'umkm_id', 'created_at', 'updated_at')
+            ->select('id', 'name', 'category', 'price', 'hotel_price', 'status', 'quantity', 'umkm_id', 'created_at', 'updated_at')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -101,25 +173,23 @@ class UmkmUserDashboardController extends Controller
             // Preserve original catalog quantity
             $catalogQty = $product->quantity;
 
-            // For UI: if there's an active consignment, show the product as "in_transit" regardless of product.status
-            if ($hasActive) {
-                $product->ui_status = 'in_transit';
+            if ($hasActive || $hasCompleted) {
+                $product->ui_status = 'dititipkan';
                 $product->quantity = $catalogQty; // show stock for products already dititipkan
                 $product->cancelled_quantity = 0;
             } elseif ($hasCancelled) {
                 $product->ui_status = 'returned';
                 $product->quantity = 0;
                 $product->cancelled_quantity = $catalogQty;
-            } elseif ($hasCompleted) {
-                $product->ui_status = 'ready';
-                $product->quantity = $catalogQty;
-                $product->cancelled_quantity = 0;
             } else {
-                // No active/finished consignments — product still in catalog input/review stage.
-                $product->ui_status = 'pending_review';
+                $product->ui_status = 'masuk';
                 $product->quantity = $catalogQty;
                 $product->cancelled_quantity = 0;
             }
+
+            $product->product_status = $product->ui_status === 'dititipkan'
+                ? 'Selesai Dititip'
+                : ($product->ui_status === 'returned' ? 'Retur / Batal' : 'Masuk ke Mitra');
 
             // Include original catalog quantity for reference
             $product->catalog_quantity = $catalogQty;

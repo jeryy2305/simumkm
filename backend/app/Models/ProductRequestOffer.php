@@ -10,6 +10,7 @@ class ProductRequestOffer extends Model
         'product_request_id',
         'umkm_id',
         'price_offered',
+        'quantity_offered',
         'status',
     ];
 

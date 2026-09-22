@@ -12,18 +12,24 @@ use App\Http\Controllers\UmkmUserDashboardController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\HotelController;
+use App\Http\Controllers\AppNotificationController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::get('/notifications', [AppNotificationController::class, 'index']);
+    Route::post('/notifications/{notification}/read', [AppNotificationController::class, 'read']);
     Route::apiResource('umkms', UmkmController::class);
     Route::put('/umkms/{umkm}/status', [UmkmController::class, 'updateStatus']);
     Route::apiResource('products', ProductController::class);
     Route::apiResource('product-requests', ProductRequestController::class);
     Route::post('/product-requests/{productRequest}/approve', [ProductRequestController::class, 'approve']);
     Route::post('/product-requests/{productRequest}/reject', [ProductRequestController::class, 'reject']);
+    Route::post('/product-requests/{productRequest}/confirm-delivery', [ProductRequestController::class, 'confirmDelivery']);
+    Route::post('/product-requests/{productRequest}/offers/{offer}/approve', [ProductRequestController::class, 'approveOffer']);
+    Route::post('/product-requests/{productRequest}/offers/{offer}/reject', [ProductRequestController::class, 'rejectOffer']);
     Route::apiResource('hotels', HotelController::class);
     Route::apiResource('consignments', ConsignmentController::class);
 
@@ -45,4 +51,6 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::get('/admin/dashboard/activities', [AdminDashboardController::class, 'activities']);
 
     Route::get('/export', [LaporanController::class, 'export']);
+    Route::get('/rekap-hotel-penitipan', [LaporanController::class, 'getHotelPenitipanData']);
+    Route::get('/export-hotel-penitipan', [LaporanController::class, 'exportHotelPenitipanPdf']);
 });

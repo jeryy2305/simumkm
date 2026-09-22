@@ -16,9 +16,10 @@ class LaporanController extends Controller
             $startDate = $this->parseDate($request->query('start_date'));
             $endDate = $this->parseDate($request->query('end_date'));
             $filterOwner = $request->query('filter_owner');
+            $reportType = $request->query('report_type', 'owner');
 
             if ($type === 'pdf') {
-                return $this->exportPdf($startDate, $endDate, $filterOwner);
+                return $this->exportPdf($startDate, $endDate, $filterOwner, $reportType);
             } elseif ($type === 'excel') {
                 return $this->exportExcel($startDate, $endDate, $filterOwner);
             } else {
@@ -89,9 +90,12 @@ class LaporanController extends Controller
             }
 
             $data[$compositeKey]['items'][] = [
+                'owner' => $ownerName,
                 'name' => $consignment->product?->name ?? 'Produk Unknown',
                 'quantity' => $consignment->product?->quantity ?? 0,
                 'price' => $consignment->product?->price ?? 0,
+                'hotel_price' => $consignment->product?->hotel_price ?? $consignment->product?->price ?? 0,
+                'partner_profit' => $consignment->product?->partner_profit ?? 0,
                 'status' => $consignment->status,
             ];
 
@@ -115,7 +119,7 @@ class LaporanController extends Controller
         })->values()->all();
     }
 
-    private function exportPdf(?Carbon $startDate, ?Carbon $endDate, ?string $filterOwner)
+    private function exportPdf(?Carbon $startDate, ?Carbon $endDate, ?string $filterOwner, string $reportType)
     {
         try {
             if (!class_exists('Barryvdh\DomPDF\Facade\Pdf')) {
@@ -132,6 +136,7 @@ class LaporanController extends Controller
                 'periodStart' => $startDate?->format('d-m-Y'),
                 'periodEnd' => $endDate?->format('d-m-Y'),
                 'filterOwner' => $filterOwner,
+                'reportType' => $reportType === 'profit' ? 'profit' : 'owner',
             ]);
 
             return $pdf->download('Rekapan_Bulanan.pdf');
@@ -157,5 +162,95 @@ class LaporanController extends Controller
             \Log::error('Excel Export Error: ' . $e->getMessage());
             throw $e;
         }
+    }
+
+    public function getHotelPenitipanData(Request $request)
+    {
+        $hotelName = $request->query('hotel_name');
+        $startDate = $this->parseDate($request->query('start_date'));
+        $endDate = $this->parseDate($request->query('end_date'));
+
+        $data = $this->fetchHotelPenitipanData($hotelName, $startDate, $endDate);
+
+        return response()->json($data);
+    }
+
+    public function exportHotelPenitipanPdf(Request $request)
+    {
+        $hotelName = $request->query('hotel_name');
+        $startDate = $this->parseDate($request->query('start_date'));
+        $endDate = $this->parseDate($request->query('end_date'));
+
+        $data = $this->fetchHotelPenitipanData($hotelName, $startDate, $endDate);
+
+        if (!class_exists('Barryvdh\DomPDF\Facade\Pdf')) {
+            return response()->json(
+                ['error' => 'PDF library not installed.'],
+                503
+            );
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('rekap-hotel-penitipan', [
+            'title' => 'Rekapitulasi Penitipan Hotel',
+            'hotelName' => $hotelName ? $hotelName : 'Semua Hotel',
+            'periodStart' => $startDate ? $startDate->format('d-m-Y') : 'SEMUA',
+            'periodEnd' => $endDate ? $endDate->format('d-m-Y') : 'SEMUA',
+            'rows' => $data['rows'],
+            'totalTagihan' => $data['total_tagihan'],
+            'printedAt' => now()->timezone(config('app.timezone', 'Asia/Jakarta'))->translatedFormat('d F Y H:i') . ' WIB',
+        ]);
+
+        $safeName = $hotelName ? \Illuminate\Support\Str::slug($hotelName) : 'Semua';
+        return $pdf->download("Rekap_Penitipan_Hotel_{$safeName}.pdf");
+    }
+
+    private function fetchHotelPenitipanData(?string $hotelName, ?Carbon $startDate, ?Carbon $endDate): array
+    {
+        $query = Consignment::with(['product', 'umkm']);
+
+        if ($hotelName && $hotelName !== '' && $hotelName !== 'all') {
+            $query->where('company', $hotelName);
+        }
+
+        if ($startDate) {
+            $query->whereDate('start_date', '>=', $startDate->toDateString());
+        }
+
+        if ($endDate) {
+            $query->whereDate('start_date', '<=', $endDate->toDateString());
+        }
+
+        $consignments = $query->orderBy('start_date', 'desc')->get();
+        $rows = [];
+        $totalTagihan = 0;
+
+        foreach ($consignments as $index => $c) {
+            $stok = (int) ($c->quantity ?? $c->product?->quantity ?? 0);
+            $hargaJual = (float) ($c->product?->hotel_price ?? (($c->product?->price ?? 0) + ($c->product?->partner_profit ?? 0)));
+            if ($hargaJual <= 0) {
+                $hargaJual = (float) ($c->product?->price ?? 0);
+            }
+            $total = $stok * $hargaJual;
+            $totalTagihan += $total;
+
+            $rows[] = [
+                'no' => $index + 1,
+                'tanggal' => Carbon::parse($c->start_date)->translatedFormat('d F Y'),
+                'date_raw' => $c->start_date,
+                'hotel' => $c->company,
+                'produk' => $c->product?->name ?? 'Produk Unknown',
+                'stok' => $stok,
+                'harga_jual' => $hargaJual,
+                'total' => $total,
+            ];
+        }
+
+        return [
+            'hotel_name' => $hotelName ?: 'Semua Hotel',
+            'period_start' => $startDate ? $startDate->format('Y-m-d') : null,
+            'period_end' => $endDate ? $endDate->format('Y-m-d') : null,
+            'rows' => $rows,
+            'total_tagihan' => $totalTagihan,
+        ];
     }
 }

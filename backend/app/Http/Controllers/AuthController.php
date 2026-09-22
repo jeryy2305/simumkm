@@ -26,6 +26,9 @@ class AuthController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'role' => $user->role,
+                    'umkm' => $user->role === 'umkm' ? [
+                        'status' => $user->umkm?->status,
+                    ] : null,
                 ],
                 'token' => $token,
             ]);
@@ -57,6 +60,9 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
+                'umkm' => $user->role === 'umkm' ? [
+                    'status' => $user->umkm?->status,
+                ] : null,
             ],
         ]);
     }

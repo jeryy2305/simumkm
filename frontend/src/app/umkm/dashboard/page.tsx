@@ -78,9 +78,9 @@ export default function DashboardUMKM() {
   }
 
   const stats = [
-    { label: "Total Titipan", value: data.stats.total_titipan, icon: ClipboardList, color: "text-blue-600 bg-blue-50 group-hover:bg-blue-600 group-hover:text-white" },
-    { label: "Produk Aktif", value: data.stats.produk_aktif, icon: Package, color: "text-amber-500 bg-amber-50 group-hover:bg-amber-500 group-hover:text-white" },
-    { label: "Selesai", value: data.stats.selesai, icon: CheckCircle2, color: "text-blue-900 bg-blue-50 group-hover:bg-blue-900 group-hover:text-white" },
+    { label: "Total Titipan", value: data.stats.total_titipan, icon: ClipboardList, color: "text-amber-600 bg-amber-50 group-hover:bg-amber-600 group-hover:text-white" },
+    { label: "Produk Aktif", value: data.stats.produk_aktif, icon: Package, color: "text-blue-600 bg-blue-50 group-hover:bg-blue-600 group-hover:text-white" },
+    { label: "Selesai", value: data.stats.selesai, icon: CheckCircle2, color: "text-green-600 bg-green-50 group-hover:bg-green-600 group-hover:text-white" },
   ];
 
   const statusStyle = (status: string) => {

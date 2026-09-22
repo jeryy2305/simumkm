@@ -11,6 +11,7 @@ interface ProductFormData {
     name: string;
     category: string;
     price: number;
+    partner_profit: number;
     quantity: number;
     status: "available" | "unavailable";
     umkm_id: string | number;
@@ -34,6 +35,7 @@ export default function DataProduk() {
         name: '',
         category: 'Makanan',
         price: 0,
+        partner_profit: 0,
         quantity: 0,
         status: 'available',
         umkm_id: '' as string | number
@@ -153,6 +155,7 @@ export default function DataProduk() {
             name: '',
             category: 'Makanan',
             price: 0,
+            partner_profit: 0,
             quantity: 0,
             status: 'available',
             umkm_id: ''
@@ -168,6 +171,7 @@ export default function DataProduk() {
             name: item.name,
             category: item.category,
             price: item.price,
+            partner_profit: Number(item.partner_profit ?? 0),
             quantity: item.quantity ?? 0,
             status: item.status,
             umkm_id: item.umkm_id
@@ -303,9 +307,12 @@ export default function DataProduk() {
                                 <tr className="bg-gray-50/80">
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">No</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Info Produk</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Keuntungan Mitra</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Harga Jual</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Pemilik (UMKM)</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Kategori</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-center">Kuantitas</th>
+                                    <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100">Status</th>
                                     <th className="py-5 px-6 text-[10px] font-extrabold text-gray-500 uppercase tracking-[0.15em] border-b border-gray-100 text-right">Manajemen</th>
                                 </tr>
                             </thead>
@@ -319,6 +326,8 @@ export default function DataProduk() {
                                                 <span className="text-xs font-bold text-blue-600 mt-0.5">Rp {Number(item.price).toLocaleString('id-ID')}</span>
                                             </div>
                                         </td>
+                                        <td className="py-4 px-6 text-sm font-semibold text-emerald-700">Rp {Number(item.partner_profit || 0).toLocaleString('id-ID')}</td>
+                                        <td className="py-4 px-6 text-sm font-extrabold text-blue-700">Rp {Number(item.hotel_price ?? item.price).toLocaleString('id-ID')}</td>
                                         <td className="py-4 px-6">
                                             <div className="flex items-center gap-2">
                                                 <Store size={14} className="text-amber-500" />
@@ -334,6 +343,9 @@ export default function DataProduk() {
                                             <span className="inline-flex items-center justify-center px-3 py-1 rounded-lg text-xs font-extrabold bg-blue-50 text-blue-950 border border-blue-100">
                                                 {item.quantity ?? 0} unit
                                             </span>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase ${item.product_status === 'Selesai Dititip' ? 'bg-emerald-100 text-emerald-700' : item.product_status === 'Retur / Batal' ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'}`}>{item.product_status || 'Masuk ke Mitra'}</span>
                                         </td>
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex justify-end space-x-2">
@@ -366,7 +378,7 @@ export default function DataProduk() {
                                 ))}
                                 {filteredData.length === 0 && (
                                     <tr>
-                                        <td colSpan={6} className="py-16 text-center text-gray-500">
+                                        <td colSpan={9} className="py-16 text-center text-gray-500">
                                             <div className="flex flex-col items-center justify-center">
                                                 <PackageOpen size={40} className="text-gray-300 mb-4" />
                                                 <p className="font-bold text-gray-700">Produk Tidak Ditemukan</p>
@@ -386,125 +398,182 @@ export default function DataProduk() {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 title={editItem ? "Edit Spesifikasi Produk" : "Tambah Entri Produk Baru"}
+                size="lg"
             >
-                <form onSubmit={handleSubmit} className="space-y-5 px-1 py-2" noValidate>
-                    {/* Nama Produk */}
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Nama Produk Dagang <span className="text-red-500">*</span></label>
-                        <input
-                            type="text"
-                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 outline-none transition-all text-sm font-semibold text-gray-800 ${
-                                formTouched.name && formErrors.name
-                                    ? 'border-red-400 focus:ring-red-200/50 focus:border-red-500'
-                                    : 'border-gray-200 focus:ring-blue-600/20 focus:border-blue-600'
-                            }`}
-                            value={formData.name}
-                            onChange={e => handleFieldChange('name', e.target.value)}
-                            onBlur={() => handleFieldBlur('name')}
-                            placeholder="Contoh: Keripik Singkong Balado..."
-                        />
-                        {formTouched.name && formErrors.name && (
-                            <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1">
-                                <AlertTriangle size={12} /> {formErrors.name}
-                            </p>
-                        )}
+                <form onSubmit={handleSubmit} className="space-y-5 px-1 py-1" noValidate>
+                    {/* Step 1: Identitas Produk & Pemilik */}
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4 space-y-4">
+                        <div className="flex items-center gap-2 border-b border-gray-200/60 pb-2.5">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">1</span>
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">Identitas Produk & Pemilik</h4>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Nama Produk Dagang <span className="text-red-500">*</span></label>
+                            <input
+                                type="text"
+                                className={`w-full px-4 py-3 bg-white border rounded-xl focus:ring-2 outline-none transition-all text-sm font-semibold text-gray-800 shadow-sm ${
+                                    formTouched.name && formErrors.name
+                                        ? 'border-red-400 focus:ring-red-200/50 focus:border-red-500'
+                                        : 'border-gray-200 focus:ring-blue-600/20 focus:border-blue-600'
+                                }`}
+                                value={formData.name}
+                                onChange={e => handleFieldChange('name', e.target.value)}
+                                onBlur={() => handleFieldBlur('name')}
+                                placeholder="Contoh: Keripik Singkong Balado..."
+                            />
+                            {formTouched.name && formErrors.name && (
+                                <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1">
+                                    <AlertTriangle size={12} /> {formErrors.name}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Pemilik UMKM <span className="text-red-500">*</span></label>
+                                <select
+                                    className={`w-full px-3.5 py-3 bg-white border rounded-xl focus:ring-2 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer shadow-sm ${
+                                        formTouched.umkm_id && formErrors.umkm_id
+                                            ? 'border-red-400 focus:ring-red-200/50 focus:border-red-500'
+                                            : 'border-gray-200 focus:ring-blue-600/20 focus:border-blue-600'
+                                    }`}
+                                    value={formData.umkm_id}
+                                    onChange={e => handleFieldChange('umkm_id', Number(e.target.value))}
+                                    onBlur={() => handleFieldBlur('umkm_id')}
+                                >
+                                    <option value="" disabled>-- Pilih Entitas Mitra --</option>
+                                    {activeUmkms.map(umkm => (
+                                        <option key={umkm.id} value={umkm.id}>{umkm.owner}</option>
+                                    ))}
+                                </select>
+                                {formTouched.umkm_id && formErrors.umkm_id && (
+                                    <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1">
+                                        <AlertTriangle size={12} /> {formErrors.umkm_id}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Kategori <span className="text-red-500">*</span></label>
+                                <select
+                                    className={`w-full px-3.5 py-3 bg-white border rounded-xl focus:ring-2 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer shadow-sm ${
+                                        formTouched.category && formErrors.category
+                                            ? 'border-red-400 focus:ring-red-200/50 focus:border-red-500'
+                                            : 'border-gray-200 focus:ring-blue-600/20 focus:border-blue-600'
+                                    }`}
+                                    value={formData.category}
+                                    onChange={e => handleFieldChange('category', e.target.value)}
+                                    onBlur={() => handleFieldBlur('category')}
+                                >
+                                    <option value="Makanan">Makanan</option>
+                                    <option value="Minuman">Minuman</option>
+                                    <option value="Lainnya">Lainnya</option>
+                                </select>
+                                {formTouched.category && formErrors.category && (
+                                    <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1">
+                                        <AlertTriangle size={12} /> {formErrors.category}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Kuantitas (Unit) <span className="text-red-500">*</span></label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    className={`w-full px-3.5 py-3 bg-white border rounded-xl focus:ring-2 outline-none transition-all text-sm font-semibold text-gray-800 shadow-sm ${
+                                        formTouched.quantity && formErrors.quantity
+                                            ? 'border-red-400 focus:ring-red-200/50 focus:border-red-500'
+                                            : 'border-gray-200 focus:ring-blue-600/20 focus:border-blue-600'
+                                    }`}
+                                    value={formData.quantity || ''}
+                                    onChange={e => {
+                                        const raw = e.target.value.replace(/^0+/, '');
+                                        handleFieldChange('quantity', raw === '' ? 0 : Number(raw));
+                                    }}
+                                    onBlur={() => handleFieldBlur('quantity')}
+                                    placeholder="Jumlah unit"
+                                />
+                                {formTouched.quantity && formErrors.quantity && (
+                                    <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1">
+                                        <AlertTriangle size={12} /> {formErrors.quantity}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Kategori, Harga, Kuantitas */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Kategori <span className="text-red-500">*</span></label>
-                            <select
-                                className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer ${
-                                    formTouched.category && formErrors.category
-                                        ? 'border-red-400 focus:ring-red-200/50 focus:border-red-500'
-                                        : 'border-gray-200 focus:ring-blue-600/20 focus:border-blue-600'
-                                }`}
-                                value={formData.category}
-                                onChange={e => handleFieldChange('category', e.target.value)}
-                                onBlur={() => handleFieldBlur('category')}
-                            >
-                                <option value="Makanan">Makanan</option>
-                                <option value="Minuman">Minuman</option>
-                                <option value="Lainnya">Lainnya</option>
-                            </select>
-                            {formTouched.category && formErrors.category && (
-                                <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1">
-                                    <AlertTriangle size={12} /> {formErrors.category}
-                                </p>
-                            )}
+                    {/* Step 2: Spesifikasi Harga */}
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4 space-y-4">
+                        <div className="flex items-center gap-2 border-b border-gray-200/60 pb-2.5">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">2</span>
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">Rincian Harga & Margin</h4>
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Harga Produk (Rp) <span className="text-red-500">*</span></label>
-                            <input
-                                type="number"
-                                min="1"
-                                className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 outline-none transition-all text-sm font-semibold text-gray-800 ${
-                                    formTouched.price && formErrors.price
-                                        ? 'border-red-400 focus:ring-red-200/50 focus:border-red-500'
-                                        : 'border-gray-200 focus:ring-blue-600/20 focus:border-blue-600'
-                                }`}
-                                value={formData.price || ''}
-                                onChange={e => handleFieldChange('price', Number(e.target.value))}
-                                onBlur={() => handleFieldBlur('price')}
-                                placeholder="Masukkan harga produk"
-                            />
-                            {formTouched.price && formErrors.price && (
-                                <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1">
-                                    <AlertTriangle size={12} /> {formErrors.price}
-                                </p>
-                            )}
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Kuantitas (Unit) <span className="text-red-500">*</span></label>
-                            <input
-                                type="number"
-                                min="1"
-                                className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 outline-none transition-all text-sm font-semibold text-gray-800 ${
-                                    formTouched.quantity && formErrors.quantity
-                                        ? 'border-red-400 focus:ring-red-200/50 focus:border-red-500'
-                                        : 'border-gray-200 focus:ring-blue-600/20 focus:border-blue-600'
-                                }`}
-                                value={formData.quantity || ''}
-                                onChange={e => handleFieldChange('quantity', Number(e.target.value))}
-                                onBlur={() => handleFieldBlur('quantity')}
-                                placeholder="Masukkan jumlah unit"
-                            />
-                            {formTouched.quantity && formErrors.quantity && (
-                                <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1">
-                                    <AlertTriangle size={12} /> {formErrors.quantity}
-                                </p>
-                            )}
-                        </div>
-                    </div>
 
-                    {/* Pemilik UMKM */}
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Pemilik UMKM <span className="text-red-500">*</span></label>
-                        <select
-                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 outline-none transition-all text-sm font-semibold text-gray-800 cursor-pointer ${
-                                formTouched.umkm_id && formErrors.umkm_id
-                                    ? 'border-red-400 focus:ring-red-200/50 focus:border-red-500'
-                                    : 'border-gray-200 focus:ring-blue-600/20 focus:border-blue-600'
-                            }`}
-                            value={formData.umkm_id}
-                            onChange={e => handleFieldChange('umkm_id', Number(e.target.value))}
-                            onBlur={() => handleFieldBlur('umkm_id')}
-                        >
-                            <option value="" disabled>-- Pilih Entitas Mitra --</option>
-                            {activeUmkms.map(umkm => (
-                                <option key={umkm.id} value={umkm.id}>{umkm.owner}</option>
-                            ))}
-                        </select>
-                        {formTouched.umkm_id && formErrors.umkm_id && (
-                            <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1">
-                                <AlertTriangle size={12} /> {formErrors.umkm_id}
-                            </p>
-                        )}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Harga Produk (Modal) <span className="text-red-500">*</span></label>
+                                <div className={`flex items-center rounded-xl border bg-white shadow-sm transition-all focus-within:ring-2 ${
+                                        formTouched.price && formErrors.price
+                                            ? 'border-red-400 focus:ring-red-200/50 focus:border-red-500'
+                                            : 'border-gray-200 focus:ring-blue-600/20 focus:border-blue-600'
+                                    }`}
+                                >
+                                    <span className="pl-3.5 text-xs font-bold text-gray-400">Rp</span>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        className="w-full bg-transparent px-2 py-3 outline-none text-sm font-semibold text-gray-800"
+                                        value={formData.price || ''}
+                                        onChange={e => {
+                                            const raw = e.target.value.replace(/^0+/, '');
+                                            handleFieldChange('price', raw === '' ? 0 : Number(raw));
+                                        }}
+                                        onBlur={() => handleFieldBlur('price')}
+                                        placeholder="0"
+                                    />
+                                </div>
+                                {formTouched.price && formErrors.price && (
+                                    <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1">
+                                        <AlertTriangle size={12} /> {formErrors.price}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Keuntungan Mitra</label>
+                                <div className="flex items-center rounded-xl border border-gray-200 bg-white shadow-sm transition-all focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600/20">
+                                    <span className="pl-3.5 text-xs font-bold text-gray-400">Rp</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        className="w-full bg-transparent px-2 py-3 outline-none text-sm font-semibold text-gray-800"
+                                        value={formData.partner_profit || ''}
+                                        onChange={e => {
+                                            const raw = e.target.value.replace(/^0+/, '');
+                                            handleFieldChange('partner_profit', raw === '' ? 0 : Number(raw));
+                                        }}
+                                        placeholder="0"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Summary Harga Jual */}
+                        <div className="flex items-center justify-between rounded-xl border-2 border-blue-500/20 bg-blue-50/70 p-3.5">
+                            <div>
+                                <p className="text-[11px] font-extrabold uppercase tracking-wider text-blue-800">Harga Jual Akhir</p>
+                                <p className="text-xs text-blue-600 font-medium">Harga Produk + Keuntungan Mitra</p>
+                            </div>
+                            <span className="text-lg font-black text-blue-700">
+                                Rp {(Number(formData.price || 0) + Number(formData.partner_profit || 0)).toLocaleString('id-ID')}
+                            </span>
+                        </div>
                     </div>
 
                     {/* Footer Buttons */}
-                    <div className="flex flex-col gap-3 pt-5 border-t border-gray-100 mt-6">
+                    <div className="flex flex-col gap-3 pt-3 border-t border-gray-100">
                         {!isFormValid && Object.keys(formTouched).length > 0 && (
                             <div className="flex items-center gap-2 px-4 py-2.5 bg-red-50 border border-red-100 rounded-xl">
                                 <AlertTriangle size={16} className="text-red-500 shrink-0" />
@@ -514,7 +583,7 @@ export default function DataProduk() {
                         <div className="flex justify-end space-x-3">
                             <button
                                 type="button"
-                                className="px-6 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                                className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
                                 onClick={() => setIsModalOpen(false)}
                             >
                                 Batalkan
@@ -522,9 +591,9 @@ export default function DataProduk() {
                             <button
                                 type="submit"
                                 disabled={!isFormValid}
-                                className={`px-6 py-2.5 text-sm font-bold rounded-xl shadow-lg transition-all active:scale-95 ${
+                                className={`px-6 py-2.5 text-sm font-bold rounded-xl shadow-md transition-all active:scale-95 ${
                                     isFormValid
-                                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/30 cursor-pointer'
+                                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20 cursor-pointer'
                                         : 'bg-gray-300 text-gray-500 shadow-none cursor-not-allowed'
                                 }`}
                             >

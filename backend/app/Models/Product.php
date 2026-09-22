@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
-    protected $fillable = ['name', 'category', 'price', 'status', 'umkm_id', 'quantity'];
+    protected $fillable = ['name', 'category', 'price', 'partner_profit', 'hotel_price', 'status', 'umkm_id', 'quantity'];
 
     public function umkm()
     {

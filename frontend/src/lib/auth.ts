@@ -77,7 +77,7 @@ export async function authFetch(input: RequestInfo, init: RequestInit = {}): Pro
       headers,
     });
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       clearAuthToken();
 
       // Lakukan redirect ke login page jika jalan di sisi client

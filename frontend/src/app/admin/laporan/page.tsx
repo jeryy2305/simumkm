@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, Download, TrendingUp, BarChart3, Package, Users } from "lucide-react";
+import Link from "next/link";
+import { Calendar, Download, TrendingUp, BarChart3, Package, Users, Building2, FileText, Eye } from "lucide-react";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
 import { Modal } from "@/components/Modal";
-import { Eye } from "lucide-react";
 
 type MonthlyRow = {
     owner: string;
@@ -16,8 +16,16 @@ type MonthlyRow = {
     items: any[];
 };
 
+type ProfitRow = {
+    owner: string;
+    product: string;
+    units: number;
+    profit: number;
+    totalProfit: number;
+};
+
 const initialSummaryData = [
-    { label: "Total Barang Masuk", value: "0", icon: Package, color: "text-blue-600", bg: "bg-blue-100" },
+    { label: "Total Barang Masuk ke Mitra", value: "0", icon: Package, color: "text-blue-600", bg: "bg-blue-100" },
     { label: "Total Barang Keluar", value: "0", icon: TrendingUp, color: "text-green-600", bg: "bg-green-100" },
     { label: "Total Nilai Distribusi", value: "Rp 0", icon: BarChart3, color: "text-amber-500", bg: "bg-amber-100" },
     { label: "Jejaring UMKM Aktif", value: "0", icon: Users, color: "text-purple-600", bg: "bg-purple-100" },
@@ -48,18 +56,97 @@ function formatDate(dateString?: string) {
 
 export default function Laporan() {
     const [allData, setAllData] = useState<any[]>([]);
+    const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
     const [activeUmkms, setActiveUmkms] = useState<any[]>([]);
     const [summaryData, setSummaryData] = useState(initialSummaryData);
     const [monthlyData, setMonthlyData] = useState<MonthlyRow[]>(initialMonthlyData);
+    const [profitData, setProfitData] = useState<ProfitRow[]>([]);
     const [showPeriodModal, setShowPeriodModal] = useState(false);
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [filterOwner, setFilterOwner] = useState("");
+    const [exportReportType, setExportReportType] = useState<"owner" | "profit">("owner");
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedDetailData, setSelectedDetailData] = useState<any>(null);
 
-    const processData = (consignments: any[], filterOwner: string) => {
+    // States for Rekap Penitipan Hotel
+    const [hotelsList, setHotelsList] = useState<any[]>([]);
+    const [selectedHotel, setSelectedHotel] = useState("");
+    const [hotelStartDate, setHotelStartDate] = useState("");
+    const [hotelEndDate, setHotelEndDate] = useState("");
+    const [hotelRecapData, setHotelRecapData] = useState<{
+        hotel_name: string;
+        period_start: string | null;
+        period_end: string | null;
+        rows: {
+            no: number;
+            tanggal: string;
+            produk: string;
+            stok: number;
+            harga_jual: number;
+            total: number;
+        }[];
+        total_tagihan: number;
+    } | null>(null);
+    const [hotelRecapLoading, setHotelRecapLoading] = useState(false);
+    const [hotelRecapExporting, setHotelRecapExporting] = useState(false);
+
+    const handleFetchHotelRecap = async () => {
+        try {
+            setHotelRecapLoading(true);
+            let url = `${API_URL}/api/rekap-hotel-penitipan?`;
+            if (selectedHotel) url += `hotel_name=${encodeURIComponent(selectedHotel)}&`;
+            if (hotelStartDate) url += `start_date=${hotelStartDate}&`;
+            if (hotelEndDate) url += `end_date=${hotelEndDate}&`;
+
+            const res = await authFetch(url);
+            if (!res.ok) throw new Error("Gagal memuat rekap penitipan hotel");
+            const data = await parseJson<any>(res);
+            setHotelRecapData(data);
+        } catch (err: any) {
+            alert(err.message || "Gagal memuat data rekap penitipan hotel");
+        } finally {
+            setHotelRecapLoading(false);
+        }
+    };
+
+    const handleExportHotelPdf = async () => {
+        try {
+            setHotelRecapExporting(true);
+            let url = `${API_URL}/api/export-hotel-penitipan?`;
+            if (selectedHotel) url += `hotel_name=${encodeURIComponent(selectedHotel)}&`;
+            if (hotelStartDate) url += `start_date=${hotelStartDate}&`;
+            if (hotelEndDate) url += `end_date=${hotelEndDate}&`;
+
+            const response = await authFetch(url, {
+                headers: {
+                    "Accept": "application/pdf,application/json",
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error("Gagal mengekspor PDF rekap penitipan hotel.");
+            }
+
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = downloadUrl;
+            const safeHotel = selectedHotel ? selectedHotel.replace(/\s+/g, '_') : 'Semua';
+            a.download = `Rekap_Penitipan_Hotel_${safeHotel}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error: any) {
+            alert(error.message || "Export PDF gagal.");
+        } finally {
+            setHotelRecapExporting(false);
+        }
+    };
+
+    const processData = (consignments: any[], filterOwner: string, products = catalogProducts) => {
         const filtered = consignments.filter((item: any) => {
             if (item.umkm?.status !== "active") return false;
             if (filterOwner && item.umkm?.owner !== filterOwner) return false;
@@ -75,9 +162,38 @@ export default function Laporan() {
             return true;
         });
 
-        const activeConsignments = filtered.filter((item: any) => item.status === "active");
+        const profitMap = new Map<string, ProfitRow>();
+        filtered
+            .filter((item: any) => item.status !== "cancelled")
+            .forEach((item: any) => {
+                const owner = item.umkm?.owner || "Tidak Diketahui";
+                const product = item.product?.name || "Produk Tidak Diketahui";
+                const units = Number(item.quantity || item.product?.quantity || 0);
+                const profit = Number(item.product?.partner_profit || 0);
+                const key = `${owner}-${product}`;
+                const current = profitMap.get(key) ?? { owner, product, units: 0, profit: 0, totalProfit: 0 };
+                current.units += units;
+                current.totalProfit += units * profit;
+                current.profit = current.units > 0 ? current.totalProfit / current.units : 0;
+                profitMap.set(key, current);
+            });
+        setProfitData(Array.from(profitMap.values()).sort((a, b) => a.owner.localeCompare(b.owner)));
+
+        const consignedProductIds = new Set(consignments.filter((item: any) => item.status !== "cancelled").map((item: any) => item.product_id));
+        const incomingProducts = products.filter((product: any) => {
+            if (product.umkm?.status !== "active") return false;
+            if (filterOwner && product.umkm?.owner !== filterOwner) return false;
+            if (consignedProductIds.has(product.id)) return false;
+            if (!startDate && !endDate) return true;
+            const productDate = new Date(product.created_at || "");
+            if (isNaN(productDate.getTime())) return false;
+            const day = new Date(productDate.setHours(0, 0, 0, 0)).getTime();
+            const start = startDate ? new Date(new Date(startDate).setHours(0, 0, 0, 0)).getTime() : null;
+            const end = endDate ? new Date(new Date(endDate).setHours(0, 0, 0, 0)).getTime() : null;
+            return (start === null || day >= start) && (end === null || day <= end);
+        });
+        const totalMasuk = incomingProducts.reduce((sum: number, product: any) => sum + Number(product.quantity || 0), 0);
         const completedConsignments = filtered.filter((item: any) => item.status === "completed");
-        const totalMasuk = activeConsignments.reduce((sum: number, item: any) => sum + Number(item.product?.quantity || 0), 0);
         const totalKeluar = completedConsignments.reduce((sum: number, item: any) => sum + Number(item.product?.quantity || 0), 0);
         const totalValue = completedConsignments.reduce((sum: number, item: any) => {
             const qty = Number(item.product?.quantity || 0);
@@ -87,7 +203,7 @@ export default function Laporan() {
         const activeUmkms = new Set(filtered.filter((item: any) => item.status !== "cancelled").map((item: any) => item.umkm?.name || item.umkm_id)).size;
 
         setSummaryData([
-            { label: "Total Barang Masuk", value: totalMasuk.toString(), icon: Package, color: "text-blue-600", bg: "bg-blue-100" },
+            { label: "Total Barang Masuk ke Mitra", value: totalMasuk.toString(), icon: Package, color: "text-blue-600", bg: "bg-blue-100" },
             { label: "Total Barang Keluar", value: totalKeluar.toString(), icon: TrendingUp, color: "text-green-600", bg: "bg-green-100" },
             { label: "Total Nilai Distribusi", value: formatCurrency(totalValue), icon: BarChart3, color: "text-amber-500", bg: "bg-amber-100" },
             { label: "Jejaring UMKM Aktif", value: activeUmkms.toString(), icon: Users, color: "text-purple-600", bg: "bg-purple-100" },
@@ -158,7 +274,7 @@ export default function Laporan() {
         try {
             setIsRefreshing(true);
 
-            let url = `${API_URL}/api/export?type=pdf`;
+            let url = `${API_URL}/api/export?type=pdf&report_type=${exportReportType}`;
             if (startDate) url += `&start_date=${startDate}`;
             if (endDate) url += `&end_date=${endDate}`;
             if (filterOwner) url += `&filter_owner=${encodeURIComponent(filterOwner)}`;
@@ -249,15 +365,21 @@ export default function Laporan() {
     const loadData = async () => {
         try {
             setIsRefreshing(true);
-            const [consignmentsResponse, umkmsResponse] = await Promise.all([
+            const [consignmentsResponse, umkmsResponse, productsResponse, hotelsResponse] = await Promise.all([
                 authFetch(`${API_URL}/api/consignments`),
-                authFetch(`${API_URL}/api/umkms`)
+                authFetch(`${API_URL}/api/umkms`),
+                authFetch(`${API_URL}/api/products`),
+                authFetch(`${API_URL}/api/hotels`)
             ]);
             const consignments = await parseJson<any[]>(consignmentsResponse);
             const umkms = await parseJson<any[]>(umkmsResponse);
+            const products = await parseJson<any[]>(productsResponse);
+            const hotels = await parseJson<any[]>(hotelsResponse);
             setAllData(consignments);
+            setCatalogProducts(products);
             setActiveUmkms(umkms.filter(u => u.status === 'active'));
-            processData(consignments, filterOwner);
+            setHotelsList(hotels.filter(h => h.verified === true));
+            processData(consignments, filterOwner, products);
         } catch (error) {
             console.error("Error fetching laporan data:", error);
         } finally {
@@ -271,9 +393,9 @@ export default function Laporan() {
 
     useEffect(() => {
         if (allData.length > 0 && !isRefreshing) {
-            processData(allData, filterOwner);
+            processData(allData, filterOwner, catalogProducts);
         }
-    }, [filterOwner]);
+    }, [filterOwner, catalogProducts]);
 
     return (
         <div className="space-y-8 md:pb-24 font-sans text-gray-800">
@@ -283,20 +405,12 @@ export default function Laporan() {
                     <h1 className="text-3xl font-extrabold text-blue-950 mb-2">Laporan Distribusi</h1>
                     <p className="text-gray-500 text-sm md:text-base">Ringkasan statistik penyaluran produk, mitra aktif, dan performa komersil waktu-nyata.</p>
                 </div>
-                <div className="flex items-center space-x-3 self-start md:self-auto">
-                    <button
-                        onClick={() => setShowPeriodModal(true)}
-                        className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-white hover:bg-gray-50 text-blue-950 font-bold border border-gray-200 rounded-xl shadow-sm transition-all text-sm cursor-pointer"
-                    >
-                        <Calendar size={18} className="text-blue-500" /> Filter Periode
-                    </button>
-                    <button
-                        onClick={handleExport}
-                        className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold border border-blue-600 rounded-xl shadow-lg shadow-blue-600/30 transition-all text-sm cursor-pointer"
-                    >
-                        <Download size={18} /> Export PDF
-                    </button>
-                </div>
+                <Link
+                    href="/admin/laporan/rekap-hotel"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 active:scale-95 text-sm whitespace-nowrap cursor-pointer"
+                >
+                    <Building2 size={20} /> Rekapitulasi Hotel →
+                </Link>
             </div>
 
             {/* Quick Stats Grid */}
@@ -317,24 +431,53 @@ export default function Laporan() {
                 })}
             </div>
 
+            <div className="flex flex-col gap-4 rounded-3xl border border-gray-100 bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
+                <div>
+                    <p className="text-sm font-extrabold text-blue-950">Opsi Laporan</p>
+                    <p className="mt-1 text-xs font-medium text-gray-500">Atur periode dan pilih tabel yang ingin diekspor.</p>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 md:min-w-[620px]">
+                <button
+                    onClick={() => setShowPeriodModal(true)}
+                    className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-sm font-bold text-blue-950 transition-all hover:bg-gray-50"
+                >
+                    <Calendar size={18} className="text-blue-500" /> Filter Periode
+                </button>
+                <select
+                    className="h-12 w-full cursor-pointer rounded-xl border border-gray-200 bg-white px-4 text-sm font-bold text-blue-950 outline-none transition-all focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
+                    value={filterOwner}
+                    onChange={(event) => setFilterOwner(event.target.value)}
+                    aria-label="Filter berdasarkan pemilik UMKM"
+                >
+                    <option value="">Semua Pemilik UMKM</option>
+                    {Array.from(new Set(activeUmkms.map((umkm) => umkm.owner))).map((owner) => (
+                        <option key={owner} value={owner}>{owner}</option>
+                    ))}
+                </select>
+                <select
+                    value={exportReportType}
+                    onChange={(event) => setExportReportType(event.target.value as "owner" | "profit")}
+                    className="h-12 w-full cursor-pointer rounded-xl border border-gray-200 bg-white px-4 text-sm font-bold text-blue-950 outline-none transition-all focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
+                    aria-label="Pilih tabel laporan yang diekspor"
+                >
+                    <option value="owner">Rekapitulasi per Pemilik</option>
+                    <option value="profit">Keuntungan Mitra</option>
+                </select>
+                <button
+                    onClick={handleExport}
+                    className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-600 bg-blue-600 px-4 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700"
+                >
+                    <Download size={18} /> Export PDF
+                </button>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 gap-8">
                 <div className="bg-white rounded-4xl p-8 border border-gray-100 shadow-sm flex flex-col">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                         <div>
                             <h2 className="text-xl font-extrabold text-blue-950 mb-2">Rekapitulasi per Pemilik</h2>
                             <p className="text-sm font-medium text-gray-500">Akumulasi jumlah distribusi per pemilik UMKM dan siklus waktu kalender.</p>
-                        </div>
-                        <div className="shrink-0">
-                            <select
-                                className="w-full md:w-72 px-4 py-3 text-sm font-semibold text-gray-700 bg-gray-50/80 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-600/20 transition-all cursor-pointer"
-                                value={filterOwner}
-                                onChange={(e) => setFilterOwner(e.target.value)}
-                            >
-                                <option value="">Filter: Semua Pemilik UMKM</option>
-                                {Array.from(new Set(activeUmkms.map(u => u.owner))).map(owner => (
-                                    <option key={owner} value={owner}>{owner}</option>
-                                ))}
-                            </select>
                         </div>
                     </div>
 
@@ -425,14 +568,62 @@ export default function Laporan() {
                         </table>
                     </div>
                 </div>
+
+                <div className="bg-white rounded-4xl p-8 border border-gray-100 shadow-sm">
+                    <div className="mb-6">
+                        <h2 className="text-xl font-extrabold text-blue-950 mb-2">Rekapitulasi Keuntungan Mitra</h2>
+                        <p className="text-sm font-medium text-gray-500">Perhitungan keuntungan berdasarkan jumlah produk yang tercatat dalam penitipan.</p>
+                    </div>
+                    <div className="overflow-x-auto rounded-2xl ring-1 ring-gray-100 shadow-sm">
+                        <table className="w-full text-left whitespace-nowrap">
+                            <thead>
+                                <tr className="bg-gray-50/70">
+                                    <th className="py-4 px-6 text-[10px] font-extrabold uppercase tracking-[0.15em] text-gray-500 border-b border-gray-100">Pemilik UMKM</th>
+                                    <th className="py-4 px-6 text-[10px] font-extrabold uppercase tracking-[0.15em] text-gray-500 border-b border-gray-100">Produk</th>
+                                    <th className="py-4 px-6 text-[10px] font-extrabold uppercase tracking-[0.15em] text-gray-500 border-b border-gray-100 text-center">Total Unit</th>
+                                    <th className="py-4 px-6 text-[10px] font-extrabold uppercase tracking-[0.15em] text-gray-500 border-b border-gray-100 text-right">Keuntungan / Unit</th>
+                                    <th className="py-4 px-6 text-[10px] font-extrabold uppercase tracking-[0.15em] text-gray-500 border-b border-gray-100 text-right">Total Keuntungan</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {profitData.map((row) => (
+                                    <tr key={`${row.owner}-${row.product}`} className="transition-colors hover:bg-emerald-50/30">
+                                        <td className="py-4 px-6 text-sm font-extrabold text-blue-950">{row.owner}</td>
+                                        <td className="py-4 px-6 text-sm font-semibold text-gray-800">{row.product}</td>
+                                        <td className="py-4 px-6 text-center text-sm font-bold text-gray-700">{row.units} unit</td>
+                                        <td className="py-4 px-6 text-right text-sm font-semibold text-emerald-700">{formatCurrency(row.profit)}</td>
+                                        <td className="py-4 px-6 text-right text-sm font-extrabold text-emerald-700">{formatCurrency(row.totalProfit)}</td>
+                                    </tr>
+                                ))}
+                                {profitData.length === 0 && (
+                                    <tr>
+                                        <td colSpan={4} className="py-10 text-center text-sm italic text-gray-400">Belum ada data keuntungan mitra.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                            <tfoot>
+                                <tr className="bg-emerald-50/60">
+                                    <td colSpan={4} className="py-4 px-6 text-sm font-extrabold text-gray-700">Total Keuntungan Mitra</td>
+                                    <td className="py-4 px-6 text-right text-sm font-extrabold text-emerald-700">{formatCurrency(profitData.reduce((sum, row) => sum + row.totalProfit, 0))}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
             </div>
 
 
 
             {/* Set Period Modal */}
             {showPeriodModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/40 backdrop-blur-sm px-4 py-6">
-                    <div className="w-full max-w-lg rounded-4xl bg-white p-8 shadow-2xl ring-1 ring-black/5 transform transition-all">
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-blue-950/40 backdrop-blur-sm px-4 py-6"
+                    onClick={() => setShowPeriodModal(false)}
+                >
+                    <div
+                        className="w-full max-w-lg rounded-4xl bg-white p-8 shadow-2xl ring-1 ring-black/5 transform transition-all"
+                        onClick={(event) => event.stopPropagation()}
+                    >
                         <div className="flex items-center justify-between mb-8">
                             <div>
                                 <h2 className="text-2xl font-extrabold text-blue-950">Atur Rentang Laporan</h2>

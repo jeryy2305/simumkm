@@ -22,6 +22,16 @@ interface ProductRequestNotification {
     category: string;
     quantity: number;
     status?: string;
+    offer_status?: string;
+    approval_notice?: string | null;
+}
+
+interface AppNotification {
+    id: number;
+    title: string;
+    message: string;
+    url: string;
+    read_at?: string | null;
 }
 
 export default function UmkmLayout({
@@ -35,7 +45,8 @@ export default function UmkmLayout({
 
     const [open, setOpen] = useState(false);
     const [requestCount, setRequestCount] = useState(0);
-    const [requestNotifications, setRequestNotifications] = useState<ProductRequestNotification[]>([]);
+    const [notificationCount, setNotificationCount] = useState(0);
+    const [notifications, setNotifications] = useState<AppNotification[]>([]);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
 
     useEffect(() => {
@@ -44,12 +55,9 @@ export default function UmkmLayout({
                 const response = await authFetch(`${API_URL}/api/umkm-user/product-requests`);
                 if (!response.ok) return;
                 const requests = await parseJson<ProductRequestNotification[]>(response);
-                const openRequests = requests.filter((request) => request.status === "open");
-                setRequestCount(openRequests.length);
-                setRequestNotifications(openRequests);
+                setRequestCount(requests.filter((request) => request.status === "open").length);
             } catch {
                 setRequestCount(0);
-                setRequestNotifications([]);
             }
         };
 
@@ -57,7 +65,27 @@ export default function UmkmLayout({
 
         window.addEventListener("product-request-status-changed", fetchRequestCount);
         return () => window.removeEventListener("product-request-status-changed", fetchRequestCount);
-    }, [pathname]);
+    }, [pathname, user?.id]);
+
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            try {
+                const response = await authFetch(`${API_URL}/api/notifications`);
+                if (!response.ok) return;
+                const data = await parseJson<AppNotification[]>(response);
+                const unread = data.filter((notification) => !notification.read_at);
+                setNotifications(unread);
+                setNotificationCount(unread.length);
+            } catch {
+                setNotifications([]);
+                setNotificationCount(0);
+            }
+        };
+
+        fetchNotifications();
+        window.addEventListener("app-notification-created", fetchNotifications);
+        return () => window.removeEventListener("app-notification-created", fetchNotifications);
+    }, [pathname, user?.id]);
     useEffect(() => {
         const handleClickOutside = () => {
             setOpen(false);
@@ -105,9 +133,9 @@ export default function UmkmLayout({
                                     className={`relative flex h-10 w-10 items-center justify-center rounded-full transition-all cursor-pointer ${notificationsOpen ? "bg-blue-950 text-amber-300 shadow-md" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
                                 >
                                     <Bell size={20} />
-                                    {requestCount > 0 && (
+                                    {notificationCount > 0 && (
                                         <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-rose-500 px-1 text-[10px] font-extrabold leading-none text-white">
-                                            {requestCount > 99 ? "99+" : requestCount}
+                                            {notificationCount > 99 ? "99+" : notificationCount}
                                         </span>
                                     )}
                                 </button>
@@ -124,25 +152,25 @@ export default function UmkmLayout({
                                                     <Bell size={18} />
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-extrabold text-slate-900">Request Produk</p>
-                                                    <p className="mt-0.5 text-xs text-slate-500">Request terbuka untuk kamu.</p>
+                                                    <p className="text-sm font-extrabold text-slate-900">Notifikasi</p>
+                                                    <p className="mt-0.5 text-xs text-slate-500">Update terbaru untuk kamu.</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center">
-                                                <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-extrabold text-blue-800">{requestCount} baru</span>
+                                                <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-extrabold text-blue-800">{notificationCount} baru</span>
                                             </div>
                                         </div>
-                                        {requestNotifications.length > 0 ? (
+                                        {notifications.length > 0 ? (
                                             <div className="max-h-[calc(100vh-9rem)] overflow-y-auto sm:max-h-72">
-                                                {requestNotifications.map((request) => (
+                                                {notifications.map((notification) => (
                                                     <Link
-                                                        key={request.id}
-                                                        href={`/umkm/request-produk?id=${request.id}`}
+                                                        key={notification.id}
+                                                        href={notification.url}
                                                         onClick={() => {
+                                                            void authFetch(`${API_URL}/api/notifications/${notification.id}/read`, { method: "POST" });
+                                                            setNotifications((current) => current.filter((item) => item.id !== notification.id));
+                                                            setNotificationCount((count) => Math.max(0, count - 1));
                                                             setNotificationsOpen(false);
-                                                            if (window.location.pathname === "/umkm/request-produk") {
-                                                                window.dispatchEvent(new CustomEvent("product-request-focus", { detail: String(request.id) }));
-                                                            }
                                                         }}
                                                         className="group flex items-center gap-3 border-b border-slate-100 px-5 py-4 transition-colors hover:bg-blue-50 cursor-pointer last:border-b-0 sm:px-4 sm:py-3"
                                                     >
@@ -151,10 +179,10 @@ export default function UmkmLayout({
                                                         </div>
                                                         <div className="min-w-0 flex-1">
                                                             <div className="flex items-start justify-between gap-3">
-                                                                <p className="truncate text-sm font-bold text-slate-800">{request.name}</p>
-                                                                <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase text-emerald-700">Terbuka</span>
+                                                                <p className="truncate text-sm font-bold text-slate-800">{notification.title}</p>
+                                                                <span className="shrink-0 rounded-full bg-blue-100 px-2 py-1 text-[10px] font-bold uppercase text-blue-700">Baru</span>
                                                             </div>
-                                                            <p className="mt-1 text-xs text-slate-500">{request.category} · {request.quantity} unit</p>
+                                                            <p className="mt-1 text-xs leading-5 text-slate-500">{notification.message}</p>
                                                         </div>
                                                         <ChevronRight size={17} className="shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-blue-600" />
                                                     </Link>

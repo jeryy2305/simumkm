@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Consignment;
+use App\Models\Product;
+use App\Services\AppNotificationService;
 
 class ConsignmentController extends Controller
 {
@@ -24,7 +26,12 @@ class ConsignmentController extends Controller
             'umkm_id' => 'required|exists:umkms,id',
         ]);
 
-        $consignment = Consignment::create($request->all());
+        $consignment = Consignment::create(array_merge($request->all(), ['status' => 'completed']));
+        Product::whereKey($consignment->product_id)->update(['status' => 'available']);
+        $userId = \App\Models\Umkm::whereKey($consignment->umkm_id)->value('user_id');
+        if ($userId) {
+            AppNotificationService::notifyUser((int) $userId, 'Produk selesai dititip', "Produk sudah dicatat dalam Data Penitipan di {$consignment->company}.", '/umkm/penitipan');
+        }
         return response()->json($consignment, 201);
     }
 
@@ -44,11 +51,17 @@ class ConsignmentController extends Controller
         ]);
 
         $consignment->update($request->all());
+        $userId = \App\Models\Umkm::whereKey($consignment->umkm_id)->value('user_id');
+        if ($userId) {
+            AppNotificationService::notifyUser((int) $userId, 'Data penitipan diperbarui', "Data penitipan di {$consignment->company} diperbarui oleh Admin.", '/umkm/penitipan');
+        }
         return response()->json($consignment);
     }
 
     public function destroy(Consignment $consignment)
     {
+        $umkmId = $consignment->umkm_id;
+        $company = $consignment->company;
         // Capture product id before deleting consignment
         $productId = $consignment->product_id;
 
@@ -68,6 +81,11 @@ class ConsignmentController extends Controller
                 // Log but don't fail the request
                 logger()->error('Failed to delete product after consignment removal: ' . $e->getMessage());
             }
+        }
+
+        $userId = \App\Models\Umkm::whereKey($umkmId)->value('user_id');
+        if ($userId) {
+            AppNotificationService::notifyUser((int) $userId, 'Data penitipan dihapus', "Data penitipan di {$company} dihapus oleh Admin.", '/umkm/penitipan');
         }
 
         return response()->json(['message' => 'Deleted']);
