@@ -383,7 +383,6 @@ export default function RequestProdukUMKM() {
       <div className="bg-white rounded-4xl border border-gray-100 shadow-sm overflow-hidden">
         {loading ? (
           <div className="relative h-64 flex items-center justify-center text-blue-600 flex-col gap-4">
-            <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
             <p className="font-bold text-sm tracking-widest uppercase">Memuat Request...</p>
           </div>
         ) : error ? (
@@ -565,7 +564,6 @@ export default function RequestProdukUMKM() {
       <Modal isOpen={isHistoryModalOpen} onClose={closeHistoryModal} title="History Permintaan">
         {historyLoading ? (
           <div className="flex flex-col items-center justify-center py-12 text-blue-600">
-            <div className="h-9 w-9 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600"></div>
             <span className="mt-3 text-sm font-bold text-gray-600">Memuat history request...</span>
           </div>
         ) : historyError ? (

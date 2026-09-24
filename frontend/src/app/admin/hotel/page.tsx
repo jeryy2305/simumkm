@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Building2, CircleX, Edit, MapPin, Phone, Plus, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { Building2, CircleX, Edit, Plus, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { Modal } from "@/components/Modal";
 import Toast from "@/components/Toast";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
@@ -242,26 +242,19 @@ export default function HotelManagementPage() {
                                     <tr key={hotel.id} className="transition-colors hover:bg-blue-50/40">
                                         <td className="px-6 py-4 text-sm font-bold text-gray-400">{index + 1}</td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-blue-700">
-                                                    <Building2 size={18} />
-                                                </div>
-                                                <div>
+                                            <div>
                                                     <p className="text-base font-extrabold text-gray-900">{hotel.name}</p>
                                                     <p className="text-xs text-gray-500">{hotel.email}</p>
-                                                </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-start gap-2 text-sm text-gray-600">
-                                                <MapPin size={14} className="mt-0.5 text-gray-400" />
+                                            <div className="text-sm text-gray-600">
                                                 <span>{hotel.city}</span>
                                             </div>
                                             <p className="mt-2 max-w-xs text-xs text-gray-500">{hotel.address}</p>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">
-                                            <div className="flex items-center gap-2">
-                                                <Phone size={14} className="text-gray-400" />
+                                            <div>
                                                 <span>{hotel.phone}</span>
                                             </div>
                                         </td>

@@ -87,8 +87,10 @@ export interface Consignment {
   quantity: number;
   duration_days: number;
   start_date: string;
+  distribution_date: string;
   end_date?: string;
   status: "active" | "completed" | "cancelled";
+  distribution_status: "waiting" | "distributed" | "received";
   created_at: string;
   updated_at?: string;
   umkm?: Partial<Umkm> & { name?: string; owner?: string; status?: string };
@@ -102,7 +104,9 @@ export interface ConsignmentFormData {
   quantity: number;
   duration_days: number;
   start_date: string;
+  distribution_date: string;
   status: string;
+  distribution_status: "waiting" | "distributed" | "received";
 }
 
 // ============= DASHBOARD & ACTIVITY =============

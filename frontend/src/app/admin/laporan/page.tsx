@@ -151,7 +151,7 @@ export default function Laporan() {
             if (item.umkm?.status !== "active") return false;
             if (filterOwner && item.umkm?.owner !== filterOwner) return false;
             if (!startDate && !endDate) return true;
-            const itemDateString = item.created_at || item.start_date || "";
+            const itemDateString = item.distribution_date || item.start_date || item.created_at || "";
             const itemDate = new Date(itemDateString);
             if (isNaN(itemDate.getTime())) return false;
             const normalizedItemDate = new Date(itemDate.setHours(0, 0, 0, 0)).getTime();
@@ -193,10 +193,10 @@ export default function Laporan() {
             return (start === null || day >= start) && (end === null || day <= end);
         });
         const totalMasuk = incomingProducts.reduce((sum: number, product: any) => sum + Number(product.quantity || 0), 0);
-        const completedConsignments = filtered.filter((item: any) => item.status === "completed");
-        const totalKeluar = completedConsignments.reduce((sum: number, item: any) => sum + Number(item.product?.quantity || 0), 0);
+        const completedConsignments = filtered.filter((item: any) => (item.distribution_status || item.status) === "received");
+        const totalKeluar = completedConsignments.reduce((sum: number, item: any) => sum + Number(item.quantity || item.product?.quantity || 0), 0);
         const totalValue = completedConsignments.reduce((sum: number, item: any) => {
-            const qty = Number(item.product?.quantity || 0);
+            const qty = Number(item.quantity || item.product?.quantity || 0);
             const price = Number(item.product?.price || 0);
             return sum + qty * price;
         }, 0);
@@ -211,7 +211,7 @@ export default function Laporan() {
 
         const dailyMap = new Map<string, { owner: string; dateKey: string; dateLabel: string; masuk: number; keluar: number; value: number; items: any[] }>();
         filtered.forEach((item: any) => {
-            const dateValue = item.created_at || item.start_date || "";
+            const dateValue = item.distribution_date || item.start_date || item.created_at || "";
             if (!dateValue) return;
 
             const dateObj = new Date(dateValue);
@@ -224,13 +224,14 @@ export default function Laporan() {
             const compositeKey = `${ownerName}-${dateKey}`;
             
             const existing = dailyMap.get(compositeKey) ?? { owner: ownerName, dateKey: dateKey, dateLabel: dateLabel, masuk: 0, keluar: 0, value: 0, items: [] as any[] };
-            const currentQty = Number(item.product?.quantity || 0);
+            const currentQty = Number(item.quantity || item.product?.quantity || 0);
             const currentPrice = Number(item.product?.price || 0);
 
-            if (item.status === "active") {
+            const distributionStatus = item.distribution_status || item.status;
+            if (distributionStatus === "waiting" || distributionStatus === "distributed" || distributionStatus === "active") {
                 existing.masuk += currentQty;
             }
-            if (item.status === "completed") {
+            if (distributionStatus === "received" || distributionStatus === "completed") {
                 existing.keluar += currentQty;
                 existing.value += currentQty * currentPrice;
             }

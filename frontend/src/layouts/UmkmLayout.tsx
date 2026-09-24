@@ -124,7 +124,7 @@ export default function UmkmLayout({
                             <div className="relative">
                                 <button
                                     type="button"
-                                    aria-label="Notifikasi request produk"
+                                    aria-label="Notifikasi aktivitas UMKM"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setNotificationsOpen(!notificationsOpen);
@@ -194,7 +194,7 @@ export default function UmkmLayout({
                                                     <Bell size={21} />
                                                 </div>
                                                 <p className="mt-3 text-sm font-bold text-slate-700">Belum ada request baru</p>
-                                                <p className="mt-1 text-xs text-slate-500">Notifikasi request dari admin akan muncul di sini.</p>
+                                                <p className="mt-1 text-xs text-slate-500">Notifikasi aktivitas dari admin akan muncul di sini.</p>
                                             </div>
                                         )}
                                     </div>
