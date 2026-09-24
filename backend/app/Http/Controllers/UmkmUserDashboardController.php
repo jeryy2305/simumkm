@@ -59,12 +59,17 @@ class UmkmUserDashboardController extends Controller
         
         $activities = [];
         foreach ($recentConsignments as $c) {
+            $distributionStatusLabels = [
+                'waiting' => 'Menunggu Distribusi',
+                'distributed' => 'Didistribusikan',
+                'received' => 'Diterima Hotel',
+            ];
             $activities[] = [
                 'id' => 'C-' . $c->id,
-                'title' => 'Penitipan ' . $c->company,
-                'status' => $c->status === 'completed' ? 'Selesai' : ($c->status === 'active' ? 'Proses' : 'Batal'),
-                'date' => $c->created_at->diffForHumans(),
-                'amount' => ($c->product ? $c->product->quantity : 0) . ' ' . ($c->product ? $c->product->name : 'N/A'),
+                'title' => 'Distribusi ke ' . $c->company,
+                'status' => $distributionStatusLabels[$c->distribution_status] ?? 'Menunggu Distribusi',
+                'date' => ($c->distribution_date ?? $c->created_at)->diffForHumans(),
+                'amount' => ($c->quantity ?? 0) . ' ' . ($c->product ? $c->product->name : 'N/A'),
                 'type' => 'consignment',
                 '_timestamp' => $c->created_at,
             ];

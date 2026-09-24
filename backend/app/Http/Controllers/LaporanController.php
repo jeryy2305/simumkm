@@ -55,11 +55,11 @@ class LaporanController extends Controller
         $query = Consignment::with(['product', 'umkm'])->whereIn('status', ['active', 'completed']);
 
         if ($startDate) {
-            $query->whereDate('start_date', '>=', $startDate->toDateString());
+            $query->whereDate('distribution_date', '>=', $startDate->toDateString());
         }
 
         if ($endDate) {
-            $query->whereDate('start_date', '<=', $endDate->toDateString());
+            $query->whereDate('distribution_date', '<=', $endDate->toDateString());
         }
 
         if ($filterOwner) {
@@ -72,8 +72,11 @@ class LaporanController extends Controller
         $data = [];
 
         foreach ($consignments as $consignment) {
-            $dateKey = Carbon::parse($consignment->start_date)->format('Y-m-d');
-            $dateLabel = Carbon::parse($consignment->start_date)->translatedFormat('d F Y');
+            $distributionDate = $consignment->distribution_date ?? $consignment->start_date;
+            $distributionStatus = $consignment->distribution_status
+                ?? ($consignment->status === 'completed' ? 'completed' : 'pending');
+            $dateKey = Carbon::parse($distributionDate)->format('Y-m-d');
+            $dateLabel = Carbon::parse($distributionDate)->translatedFormat('d F Y');
             $ownerName = $consignment->umkm?->owner ?? 'Tidak Diketahui';
             $compositeKey = $ownerName . '-' . $dateKey;
 
@@ -92,19 +95,19 @@ class LaporanController extends Controller
             $data[$compositeKey]['items'][] = [
                 'owner' => $ownerName,
                 'name' => $consignment->product?->name ?? 'Produk Unknown',
-                'quantity' => $consignment->product?->quantity ?? 0,
+                'quantity' => $consignment->quantity ?? $consignment->product?->quantity ?? 0,
                 'price' => $consignment->product?->price ?? 0,
                 'hotel_price' => $consignment->product?->hotel_price ?? $consignment->product?->price ?? 0,
                 'partner_profit' => $consignment->product?->partner_profit ?? 0,
-                'status' => $consignment->status,
+                'status' => $distributionStatus,
             ];
 
-            if ($consignment->status === 'active') {
-                $data[$compositeKey]['masuk'] += $consignment->product ? $consignment->product->quantity : 0;
+            if (in_array($distributionStatus, ['waiting', 'distributed'], true)) {
+                $data[$compositeKey]['masuk'] += $consignment->quantity ?? $consignment->product?->quantity ?? 0;
             }
 
-            if ($consignment->status === 'completed') {
-                $qty = $consignment->product ? $consignment->product->quantity : 0;
+            if ($distributionStatus === 'received') {
+                $qty = $consignment->quantity ?? $consignment->product?->quantity ?? 0;
                 $data[$compositeKey]['keluar'] += $qty;
                 $price = $consignment->product?->price ?? 0;
                 $data[$compositeKey]['value'] += $qty * $price;
@@ -213,14 +216,14 @@ class LaporanController extends Controller
         }
 
         if ($startDate) {
-            $query->whereDate('start_date', '>=', $startDate->toDateString());
+            $query->whereDate('distribution_date', '>=', $startDate->toDateString());
         }
 
         if ($endDate) {
-            $query->whereDate('start_date', '<=', $endDate->toDateString());
+            $query->whereDate('distribution_date', '<=', $endDate->toDateString());
         }
 
-        $consignments = $query->orderBy('start_date', 'desc')->get();
+        $consignments = $query->orderBy('distribution_date', 'desc')->get();
         $rows = [];
         $totalTagihan = 0;
 
@@ -235,8 +238,8 @@ class LaporanController extends Controller
 
             $rows[] = [
                 'no' => $index + 1,
-                'tanggal' => Carbon::parse($c->start_date)->translatedFormat('d F Y'),
-                'date_raw' => $c->start_date,
+                'tanggal' => Carbon::parse($c->distribution_date ?? $c->start_date)->translatedFormat('d F Y'),
+                'date_raw' => $c->distribution_date ?? $c->start_date,
                 'hotel' => $c->company,
                 'produk' => $c->product?->name ?? 'Produk Unknown',
                 'stok' => $stok,

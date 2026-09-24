@@ -6,7 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class Consignment extends Model
 {
-    protected $fillable = ['company', 'product_id', 'quantity', 'duration_days', 'start_date', 'end_date', 'status', 'umkm_id'];
+    protected $fillable = ['company', 'product_id', 'quantity', 'duration_days', 'start_date', 'distribution_date', 'end_date', 'status', 'distribution_status', 'umkm_id'];
+
+    protected $casts = [
+        'start_date' => 'date',
+        'distribution_date' => 'date',
+        'end_date' => 'date',
+    ];
 
     public function umkm()
     {

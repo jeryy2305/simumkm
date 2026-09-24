@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Consignment;
 use App\Models\Product;
 use App\Services\AppNotificationService;
+use Carbon\Carbon;
 
 class ConsignmentController extends Controller
 {
@@ -22,16 +23,14 @@ class ConsignmentController extends Controller
             'quantity' => 'required|integer|min:1',
             'duration_days' => 'required|integer',
             'start_date' => 'required|date',
+            'distribution_date' => 'required|date',
             'status' => 'required|in:active,completed,cancelled',
+            'distribution_status' => 'required|in:waiting,distributed,received',
             'umkm_id' => 'required|exists:umkms,id',
         ]);
 
-        $consignment = Consignment::create(array_merge($request->all(), ['status' => 'completed']));
+        $consignment = Consignment::create($request->all());
         Product::whereKey($consignment->product_id)->update(['status' => 'available']);
-        $userId = \App\Models\Umkm::whereKey($consignment->umkm_id)->value('user_id');
-        if ($userId) {
-            AppNotificationService::notifyUser((int) $userId, 'Produk selesai dititip', "Produk sudah dicatat dalam Data Penitipan di {$consignment->company}.", '/umkm/penitipan');
-        }
         return response()->json($consignment, 201);
     }
 
@@ -46,22 +45,34 @@ class ConsignmentController extends Controller
             'company' => 'required',
             'duration_days' => 'required|integer',
             'start_date' => 'required|date',
+            'distribution_date' => 'required|date',
             'end_date' => 'nullable|date',
             'status' => 'required|in:active,completed,cancelled',
+            'distribution_status' => 'required|in:waiting,distributed,received',
         ]);
 
+        $previousDistributionStatus = $consignment->distribution_status;
         $consignment->update($request->all());
-        $userId = \App\Models\Umkm::whereKey($consignment->umkm_id)->value('user_id');
-        if ($userId) {
-            AppNotificationService::notifyUser((int) $userId, 'Data penitipan diperbarui', "Data penitipan di {$consignment->company} diperbarui oleh Admin.", '/umkm/penitipan');
+
+        if ($previousDistributionStatus !== 'distributed' && $consignment->distribution_status === 'distributed') {
+            $consignment->load('product', 'umkm');
+            $userId = $consignment->umkm?->user_id;
+            if ($userId) {
+                $date = Carbon::parse($consignment->distribution_date)->translatedFormat('d F Y');
+                $productName = $consignment->product?->name ?? 'Produk';
+                AppNotificationService::notifyUser(
+                    (int) $userId,
+                    'Produk Telah Didistribusikan',
+                    "Produk {$productName} sebanyak {$consignment->quantity} unit telah didistribusikan ke Hotel {$consignment->company}. Status: Didistribusikan. Tanggal: {$date}.",
+                    '/umkm/dashboard'
+                );
+            }
         }
         return response()->json($consignment);
     }
 
     public function destroy(Consignment $consignment)
     {
-        $umkmId = $consignment->umkm_id;
-        $company = $consignment->company;
         // Capture product id before deleting consignment
         $productId = $consignment->product_id;
 
@@ -81,11 +92,6 @@ class ConsignmentController extends Controller
                 // Log but don't fail the request
                 logger()->error('Failed to delete product after consignment removal: ' . $e->getMessage());
             }
-        }
-
-        $userId = \App\Models\Umkm::whereKey($umkmId)->value('user_id');
-        if ($userId) {
-            AppNotificationService::notifyUser((int) $userId, 'Data penitipan dihapus', "Data penitipan di {$company} dihapus oleh Admin.", '/umkm/penitipan');
         }
 
         return response()->json(['message' => 'Deleted']);
