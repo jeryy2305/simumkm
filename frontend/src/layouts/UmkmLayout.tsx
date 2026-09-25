@@ -107,7 +107,7 @@ export default function UmkmLayout({
     ];
 
     return (
-        <div className="flex min-h-screen flex-col bg-gray-50 pb-24 md:pb-28 lg:pb-28">
+        <div className="flex h-screen flex-col overflow-hidden bg-gray-50 pb-24 md:pb-28 lg:pb-28">
             {/* Top Header */}
             <header className={`fixed top-0 inset-x-0 z-40 h-14 flex items-center justify-between px-4 transition-all duration-300 ${
                 isScrolled ? "bg-white/70 backdrop-blur-md shadow-sm" : "bg-white border-b border-transparent"
@@ -243,7 +243,7 @@ export default function UmkmLayout({
 
             {/* Main Content Area */}
             <main
-                className="flex-1 overflow-y-auto px-4 pb-6 pt-14 md:pb-8"
+                className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-14 md:pb-8"
                 onScroll={handleScroll}
             >
                 {children}
@@ -251,7 +251,7 @@ export default function UmkmLayout({
 
             {/* Bottom Navigation */}
             <nav aria-label="Navigasi akun UMKM" className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 md:px-8 lg:px-10">
-                <div className="mx-auto flex h-[4.25rem] max-w-md items-center justify-around gap-1 rounded-[1.6rem] border border-slate-200/80 bg-white/95 p-1.5 shadow-[0_12px_40px_rgba(15,23,42,0.14)] backdrop-blur-xl sm:h-[4.75rem] sm:max-w-xl sm:gap-2 sm:rounded-[1.75rem] sm:p-2 md:h-20 md:max-w-2xl md:gap-3 md:px-3 lg:h-[5.25rem] lg:max-w-3xl lg:gap-4 lg:rounded-[1.9rem] lg:px-4">
+                <div className="mx-auto flex h-17 max-w-md items-center justify-around gap-1 rounded-[1.6rem] border border-slate-200/80 bg-white/95 p-1.5 shadow-[0_12px_40px_rgba(15,23,42,0.14)] backdrop-blur-xl sm:h-19 sm:max-w-xl sm:gap-2 sm:rounded-[1.75rem] sm:p-2 md:h-20 md:max-w-2xl md:gap-3 md:px-3 lg:h-21 lg:max-w-3xl lg:gap-4 lg:rounded-[1.9rem] lg:px-4">
                     {bottomNavItems.map((item) => {
                         const Icon = item.icon;
                         const isActive = pathname === item.href;
@@ -266,7 +266,7 @@ export default function UmkmLayout({
                                 }`}
                             >
                                 <span className={`relative flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all duration-200 sm:h-10 sm:w-10 md:h-11 md:w-11 lg:h-12 lg:w-12 ${isActive ? "-translate-y-3 border-white bg-blue-950 text-amber-400 shadow-[0_8px_18px_rgba(15,23,42,0.28)] ring-1 ring-blue-100" : "border-transparent bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-950"}`}>
-                                        <Icon className="h-[19px] w-[19px] sm:h-5 sm:w-5 md:h-[22px] md:w-[22px] lg:h-6 lg:w-6" strokeWidth={isActive ? 2.6 : 2.2} />
+                                        <Icon className="h-4.75 w-4.75 sm:h-5 sm:w-5 md:h-5.5 md:w-5.5 lg:h-6 lg:w-6" strokeWidth={isActive ? 2.6 : 2.2} />
                                         {typeof item.badge === "number" && item.badge > 0 && (
                                             <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-rose-500 px-1 text-[9px] font-extrabold leading-none text-white shadow-sm">
                                                 {item.badge > 99 ? "99+" : item.badge}

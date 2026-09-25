@@ -27,7 +27,6 @@ Route::middleware(['api', 'auth:sanctum'])->group(function () {
     Route::apiResource('product-requests', ProductRequestController::class);
     Route::post('/product-requests/{productRequest}/approve', [ProductRequestController::class, 'approve']);
     Route::post('/product-requests/{productRequest}/reject', [ProductRequestController::class, 'reject']);
-    Route::post('/product-requests/{productRequest}/confirm-delivery', [ProductRequestController::class, 'confirmDelivery']);
     Route::post('/product-requests/{productRequest}/offers/{offer}/approve', [ProductRequestController::class, 'approveOffer']);
     Route::post('/product-requests/{productRequest}/offers/{offer}/reject', [ProductRequestController::class, 'rejectOffer']);
     Route::apiResource('hotels', HotelController::class);

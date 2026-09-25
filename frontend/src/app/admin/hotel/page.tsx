@@ -183,39 +183,39 @@ export default function HotelManagementPage() {
     };
 
     return (
-        <div className="space-y-6 pb-24 font-sans text-gray-800">
+        <div className="space-y-6 pb-24 font-sans text-black">
             {notification && <Toast type={notification.type} message={notification.message} onClose={() => setNotification(null)} />}
 
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                 <div>
-                    <h1 className="mb-2 text-3xl font-extrabold text-blue-950">Data Hotel</h1>
-                    <p className="text-gray-500">Verifikasi dan kelola data hotel agar tujuan distribusi benar-benar valid dan terdaftar dengan jelas.</p>
+                    <h1 className="mb-2 text-3xl font-extrabold text-black">Data Hotel</h1>
+                    <p className="text-sm md:text-base text-black">Verifikasi dan kelola data hotel agar tujuan distribusi benar-benar valid dan terdaftar dengan jelas.</p>
                 </div>
 
                 <button
                     type="button"
                     onClick={handleAdd}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 py-3.5 font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:-translate-y-0.5 hover:bg-blue-700 active:scale-95"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-600 bg-amber-500 px-6 py-3 font-extrabold text-black transition-all hover:bg-amber-600 active:scale-95"
                 >
                     <Plus size={20} />
                     Tambah Hotel
                 </button>
             </div>
 
-            <div className="mb-6 flex items-center rounded-3xl border border-gray-100 bg-white p-2 shadow-sm focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600/20">
+            <div className="mb-6 flex items-center rounded-lg border border-gray-200 bg-white p-2 focus-within:border-amber-500">
                 <div className="px-4">
-                    <Search className="text-blue-400" size={22} />
+                    <Search className="text-amber-500" size={22} />
                 </div>
                 <input
                     type="text"
                     value={searchTerm}
                     onChange={(event) => setSearchTerm(event.target.value)}
                     placeholder="Cari hotel, kota, alamat, atau nomor telepon..."
-                    className="w-full bg-transparent px-2 py-3 text-sm font-medium text-gray-800 outline-none"
+                    className="w-full bg-transparent px-2 py-3 text-sm font-medium text-black outline-none"
                 />
             </div>
 
-            <div className="overflow-hidden rounded-4xl border border-gray-100 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
                 {loading ? (
                     <div className="flex items-center justify-center p-16 text-blue-600">
                         <div className="text-center">
@@ -265,10 +265,10 @@ export default function HotelManagementPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => handleVerificationToggle(hotel)}
-                                                className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                                                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${
                                                     hotel.verified
-                                                        ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                                                        : "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                                    : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
                                                 }`}
                                             >
                                                 {hotel.verified ? <ShieldCheck size={14} /> : <CircleX size={14} />}

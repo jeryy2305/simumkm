@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Consignment;
 use App\Models\Product;
-use App\Models\ProductRequest;
 use App\Models\Umkm;
 use Illuminate\Support\Facades\Auth;
 
@@ -45,11 +44,6 @@ class UmkmUserDashboardController extends Controller
                                 ->orderBy('created_at', 'desc')
                                 ->get();
 
-        $recentProductDeliveries = ProductRequest::where('taken_by_umkm_id', $umkm->id)
-                    ->whereNotNull('delivered_to_partner_at')
-                    ->orderBy('delivered_to_partner_at', 'desc')
-                    ->get();
-
         $recentCatalogProducts = Product::where('umkm_id', $umkm->id)
                     ->whereDoesntHave('consignments', function ($query) {
                         $query->whereIn('status', ['active', 'completed', 'cancelled']);
@@ -75,39 +69,7 @@ class UmkmUserDashboardController extends Controller
             ];
         }
 
-        foreach ($recentProductDeliveries as $productRequest) {
-            $hasConsignmentActivity = $recentConsignments->contains(function ($consignment) use ($productRequest) {
-                return $consignment->product
-                    && mb_strtolower(trim($consignment->product->name)) === mb_strtolower(trim($productRequest->name))
-                    && $consignment->product->category === $productRequest->category;
-            });
-
-            if ($hasConsignmentActivity) {
-                continue;
-            }
-
-            $activities[] = [
-                'id' => 'PR-' . $productRequest->id,
-                'title' => 'Produk masuk ke Mitra',
-                'status' => 'Masuk ke Mitra',
-                'date' => $productRequest->delivered_to_partner_at->diffForHumans(),
-                'amount' => $productRequest->quantity . ' ' . $productRequest->name,
-                'type' => 'request',
-                '_timestamp' => $productRequest->delivered_to_partner_at,
-            ];
-        }
-
         foreach ($recentCatalogProducts as $product) {
-            $isDeliveryActivity = $recentProductDeliveries->contains(function ($productRequest) use ($product) {
-                return $productRequest->name === $product->name
-                    && $productRequest->category === $product->category
-                    && (int) $productRequest->quantity === (int) $product->quantity;
-            });
-
-            if ($isDeliveryActivity) {
-                continue;
-            }
-
             $activities[] = [
                 'id' => 'P-' . $product->id,
                 'title' => 'Produk masuk ke Mitra',

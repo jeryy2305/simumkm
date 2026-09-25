@@ -399,16 +399,16 @@ export default function Laporan() {
     }, [filterOwner, catalogProducts]);
 
     return (
-        <div className="space-y-8 md:pb-24 font-sans text-gray-800">
+        <div className="space-y-6 md:pb-24 font-sans text-black">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-2">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-blue-950 mb-2">Laporan Distribusi</h1>
-                    <p className="text-gray-500 text-sm md:text-base">Ringkasan statistik penyaluran produk, mitra aktif, dan performa komersil waktu-nyata.</p>
+                    <h1 className="text-3xl font-extrabold text-black mb-2">Laporan Distribusi</h1>
+                    <p className="text-black text-sm md:text-base">Ringkasan statistik penyaluran produk, mitra aktif, dan performa komersil waktu-nyata.</p>
                 </div>
                 <Link
                     href="/admin/laporan/rekap-hotel"
-                    className="inline-flex items-center justify-center gap-2 px-5 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 active:scale-95 text-sm whitespace-nowrap cursor-pointer"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-600 text-black font-extrabold rounded-lg border border-amber-600 text-sm whitespace-nowrap cursor-pointer"
                 >
                     <Building2 size={20} /> Rekapitulasi Hotel →
                 </Link>
@@ -419,10 +419,10 @@ export default function Laporan() {
                 {summaryData.map((item, index) => {
                     const Icon = item.icon;
                     return (
-                        <div key={index} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex items-center justify-between group hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                        <div key={index} className="bg-white rounded-lg p-5 border border-gray-200 flex items-center justify-between group">
                             <div>
                                 <p className="text-[11px] font-extrabold uppercase tracking-[0.15em] text-gray-500 mb-2">{item.label}</p>
-                                <p className="text-2xl font-extrabold text-blue-950">{item.value}</p>
+                                <p className="text-2xl font-extrabold text-black">{item.value}</p>
                             </div>
                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors shadow-inner ${item.bg} ${item.color}`}>
                                 <Icon size={24} />
@@ -432,12 +432,12 @@ export default function Laporan() {
                 })}
             </div>
 
-            <div className="flex flex-col gap-4 rounded-3xl border border-gray-100 bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 md:flex-row md:items-center md:justify-between">
                 <div>
                     <p className="text-sm font-extrabold text-blue-950">Opsi Laporan</p>
                     <p className="mt-1 text-xs font-medium text-gray-500">Atur periode dan pilih tabel yang ingin diekspor.</p>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 md:min-w-[620px]">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 md:min-w-155">
                 <button
                     onClick={() => setShowPeriodModal(true)}
                     className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-sm font-bold text-blue-950 transition-all hover:bg-gray-50"
@@ -474,7 +474,7 @@ export default function Laporan() {
             </div>
 
             <div className="grid grid-cols-1 gap-8">
-                <div className="bg-white rounded-4xl p-8 border border-gray-100 shadow-sm flex flex-col">
+                <div className="bg-white rounded-lg p-6 border border-gray-200 flex flex-col">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                         <div>
                             <h2 className="text-xl font-extrabold text-blue-950 mb-2">Rekapitulasi per Pemilik</h2>
@@ -570,7 +570,7 @@ export default function Laporan() {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-4xl p-8 border border-gray-100 shadow-sm">
+                <div className="bg-white rounded-lg p-6 border border-gray-200">
                     <div className="mb-6">
                         <h2 className="text-xl font-extrabold text-blue-950 mb-2">Rekapitulasi Keuntungan Mitra</h2>
                         <p className="text-sm font-medium text-gray-500">Perhitungan keuntungan berdasarkan jumlah produk yang tercatat dalam penitipan.</p>
@@ -696,7 +696,7 @@ export default function Laporan() {
                                                 <p className="font-extrabold text-gray-900">{item.product?.name || 'Produk Unknown'}</p>
                                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Tujuan: {item.company}</p>
                                             </div>
-                                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                            <span className={`inline-flex rounded-lg border px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
                                                 item.status === 'active' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
                                             }`}>
                                                 {item.status === 'active' ? 'Masuk' : 'Selesai'}

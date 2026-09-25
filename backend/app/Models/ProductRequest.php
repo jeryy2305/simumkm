@@ -12,19 +12,16 @@ class ProductRequest extends Model
         'quantity',
         'reference_price',
         'partner_profit',
-        'hotel_departure_date',
-        'description',
+        'tester_delivery_date',
         'purpose',
         'status',
         'participation_deadline',
         'taken_by_umkm_id',
         'price_offered',
-        'delivered_to_partner_at',
         'rejection_reason',
     ];
 
     protected $casts = [
-        'delivered_to_partner_at' => 'datetime',
         'participation_deadline' => 'datetime',
     ];
 

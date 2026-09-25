@@ -247,17 +247,17 @@ export default function DataProduk() {
     };
 
     return (
-        <div className="space-y-6 md:pb-24 font-sans text-gray-800">
+        <div className="space-y-6 md:pb-24 font-sans text-black">
             {notification && <Toast type={notification.type} message={notification.message} onClose={() => setNotification(null)} />}
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-blue-950 mb-2">Katalog Produk UMKM</h1>
-                    <p className="text-gray-500 text-sm md:text-base">Kelola seluruh direktori data produk yang dikelola oleh mitra UMKM.</p>
+                    <h1 className="text-3xl font-extrabold text-black mb-2">Katalog Produk UMKM</h1>
+                    <p className="text-black text-sm md:text-base">Kelola seluruh direktori data produk yang dikelola oleh mitra UMKM.</p>
                 </div>
                 <button
                     onClick={handleAdd}
-                    className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/30 transition-all hover:-translate-y-0.5 active:scale-95 whitespace-nowrap cursor-pointer"
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-black font-extrabold rounded-lg border border-amber-600 whitespace-nowrap cursor-pointer"
                 >
                     <Plus size={20} /> Tambah Produk
                 </button>
@@ -265,21 +265,21 @@ export default function DataProduk() {
 
             {/* Filter and Search Bar */}
             <div className="flex flex-col md:flex-row gap-4 mb-6">
-                <div className="flex-1 bg-white px-2 py-1.5 rounded-3xl shadow-sm border border-gray-100 flex items-center focus-within:ring-2 focus-within:ring-blue-600/20 focus-within:border-blue-600 transition-all">
+                <div className="flex-1 bg-white px-2 py-1.5 rounded-lg border border-gray-200 flex items-center focus-within:border-amber-500">
                     <div className="pl-4 pr-2">
-                        <Search className="text-blue-400" size={22} />
+                        <Search className="text-amber-500" size={22} />
                     </div>
                     <input
                         type="text"
                         placeholder="Cari nama produk, umkm, atau kategori..."
-                        className="w-full bg-transparent px-2 py-3 outline-none text-sm font-medium text-gray-800"
+                        className="w-full bg-transparent px-2 py-3 outline-none text-sm font-medium text-black"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <div className="w-full md:w-72 shrink-0 bg-white p-2 rounded-3xl shadow-sm border border-gray-100">
+                <div className="w-full md:w-72 shrink-0 bg-white p-2 rounded-lg border border-gray-200">
                     <select
-                        className="w-full px-4 py-3 text-sm font-semibold text-gray-700 bg-gray-50/80 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-600/20 transition-all cursor-pointer"
+                        className="w-full px-4 py-3 text-sm font-semibold text-black bg-gray-50 border border-gray-200 rounded-md outline-none focus:border-amber-500 cursor-pointer"
                         value={filterOwner}
                         onChange={(e) => setFilterOwner(e.target.value)}
                     >
@@ -292,7 +292,7 @@ export default function DataProduk() {
             </div>
 
             {/* Table Container */}
-            <div className="bg-white rounded-4xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                 {loading ? (
                     <div className="relative h-64 flex items-center justify-center text-blue-600 flex-col gap-4">
                         <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>

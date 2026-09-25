@@ -22,7 +22,7 @@ export default function DashboardUMKM() {
         try {
           const errorData = await parseJson<{ message?: string }>(res);
           errorMessage = errorData?.message || errorMessage;
-        } catch (parseError) {
+        } catch {
           errorMessage = `Error ${res.status}: ${res.statusText}`;
         }
         throw new Error(errorMessage);
@@ -47,8 +47,7 @@ export default function DashboardUMKM() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-          <span className="font-semibold tracking-wide text-black">Memuat dashboard...</span>
-        </div>
+        <span className="font-semibold tracking-wide text-black">Memuat dashboard...</span>
       </div>
     );
   }

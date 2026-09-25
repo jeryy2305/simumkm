@@ -55,7 +55,9 @@ export default function LoginPage() {
                     message = rawText;
                 }
                 clearAuthToken();
-                setError(message.slice(0, 200) || "Email atau password salah.");
+                const normalizedMessage = message.toLowerCase();
+                const isInvalidLogin = response.status === 401 || normalizedMessage.includes("invalid credential");
+                setError(isInvalidLogin ? "Email atau password salah." : message.slice(0, 200) || "Gagal masuk. Silakan coba lagi.");
                 return;
             }
 

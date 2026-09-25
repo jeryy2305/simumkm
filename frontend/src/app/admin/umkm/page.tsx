@@ -155,38 +155,38 @@ export default function DataUMKM() {
     };
 
     return (
-        <div className="space-y-6 pb-24 font-sans text-gray-800">
+        <div className="space-y-6 pb-24 font-sans text-black">
             {notification && <Toast type={notification.type} message={notification.message} onClose={() => setNotification(null)} />}
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-blue-950 mb-2">Manajemen UMKM</h1>
-                    <p className="text-gray-500">Kelola dan pantau seluruh data mitra UMKM yang tergabung dalam jaringan.</p>
+                    <h1 className="text-3xl font-extrabold text-black mb-2">Manajemen UMKM</h1>
+                    <p className="text-sm md:text-base text-black">Kelola dan pantau seluruh data mitra UMKM yang tergabung dalam jaringan.</p>
                 </div>
                 <button
                     onClick={handleAdd}
-                    className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/30 transition-all hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-black font-extrabold rounded-lg border border-amber-600 cursor-pointer"
                 >
                     <Plus size={20} /> Tambah Mitra UMKM
                 </button>
             </div>
 
             {/* Filter / Search Bar */}
-            <div className="bg-white p-2 rounded-3xl shadow-sm border border-gray-100 flex items-center mb-6 focus-within:ring-2 focus-within:ring-blue-600/20 focus-within:border-blue-600 transition-all">
+            <div className="bg-white p-2 rounded-lg border border-gray-200 flex items-center mb-6 focus-within:border-amber-500">
                 <div className="pl-4 pr-2">
-                    <Search className="text-blue-400" size={22} />
+                    <Search className="text-amber-500" size={22} />
                 </div>
                 <input
                     type="text"
                     placeholder="Cari nama UMKM atau email pemilik..."
-                    className="w-full bg-transparent px-2 py-3 outline-none text-sm font-medium text-gray-800"
+                    className="w-full bg-transparent px-2 py-3 outline-none text-sm font-medium text-black"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
 
             {/* Table Container */}
-            <div className="bg-white rounded-4xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                 {loading ? (
                     <div className="p-16 flex flex-col items-center justify-center text-blue-500">
                         <svg className="animate-spin h-8 w-8 mb-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

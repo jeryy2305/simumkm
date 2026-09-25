@@ -54,20 +54,20 @@ export default function AdminDashboard() {
     };
 
     return (
-        <div className="space-y-8 pb-20 font-sans text-gray-800">
+        <div className="space-y-6 pb-24 font-sans text-black">
             {/* Header Widget */}
-            <div className="bg-linear-to-r from-blue-950 via-blue-900 to-blue-800 rounded-4xl p-8 md:p-10 text-white shadow-2xl relative overflow-hidden group mb-8">
+            <div className="rounded-lg border border-gray-200 bg-white p-6 md:p-8 mb-8">
                 <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                     <div>
-                        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">Pusat Kendali Operasional</h1>
-                        <p className="text-base text-blue-100/90 max-w-2xl leading-relaxed">
+                        <h1 className="text-3xl font-extrabold text-black mb-2">Pusat Kendali Operasional</h1>
+                        <p className="text-sm md:text-base text-black max-w-2xl leading-relaxed">
                             Ringkasan komprehensif performa jaringan mitra UMKM, pergerakan barang, dan siklus logistik hari ini.
                         </p>
                     </div>
-                    <div className="flex items-center bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 px-6 py-4 w-full lg:w-auto">
-                        <p className="text-sm font-medium text-blue-200 mr-4 whitespace-nowrap">Status Sistem</p>
-                        <div className="px-4 py-1.5 bg-green-500/20 text-green-300 rounded-full font-bold text-xs uppercase tracking-widest border border-green-500/50 flex items-center whitespace-nowrap">
-                            <span className="w-2 h-2 bg-green-400 rounded-full mr-2 shadow-[0_0_8px_rgba(74,222,128,0.8)] animate-pulse"></span>
+                    <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 w-full lg:w-auto">
+                        <p className="text-sm font-medium text-black mr-4 whitespace-nowrap">Status Sistem</p>
+                        <div className="px-4 py-1.5 bg-green-50 text-green-700 rounded-lg font-bold text-xs uppercase tracking-widest border border-green-200 flex items-center whitespace-nowrap">
+                            <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
                             Optimal
                         </div>
                     </div>
@@ -79,12 +79,12 @@ export default function AdminDashboard() {
                 {stats.map((stat, index) => {
                     const Icon = stat.icon;
                     return (
-                        <div key={index} className="group rounded-3xl bg-white p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 cursor-pointer flex items-center justify-between">
+                        <div key={index} className="group rounded-lg bg-white p-5 border border-gray-200 cursor-pointer flex items-center justify-between">
                             <div>
                                 <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-gray-500 mb-2">{stat.title}</p>
-                                <p className="text-2xl lg:text-3xl font-extrabold text-blue-950">{stat.value}</p>
+                                <p className="text-2xl lg:text-3xl font-extrabold text-black">{stat.value}</p>
                             </div>
-                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl transition-colors duration-300 bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white shrink-0">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-50 text-amber-600 group-hover:bg-amber-500 group-hover:text-black shrink-0">
                                 <Icon size={24} />
                             </div>
                         </div>
@@ -93,7 +93,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Recent Activity Table Container */}
-            <div className="bg-white rounded-4xl border border-gray-100 shadow-sm p-2 overflow-hidden">
+            <div className="bg-white rounded-lg border border-gray-200 p-2 overflow-hidden">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-6 pb-5 border-b border-gray-50">
                     <div>
                         <h2 className="text-xl font-extrabold text-blue-950">Aktivitas Titipan Terbaru</h2>

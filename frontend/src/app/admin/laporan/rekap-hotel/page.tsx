@@ -104,7 +104,7 @@ export default function RekapHotelPage() {
     };
 
     return (
-        <div className="space-y-8 md:pb-24 font-sans text-gray-800">
+        <div className="space-y-6 md:pb-24 font-sans text-black">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -114,17 +114,17 @@ export default function RekapHotelPage() {
                     >
                         <ArrowLeft size={16} /> Kembali ke Laporan Distribusi
                     </Link>
-                    <h1 className="text-3xl font-extrabold text-blue-950 flex items-center gap-3">
-                        <Building2 className="text-blue-600" size={32} /> Rekapitulasi Penitipan Hotel
+                    <h1 className="text-3xl font-extrabold text-black flex items-center gap-3">
+                        <Building2 className="text-amber-500" size={32} /> Rekapitulasi Penitipan Hotel
                     </h1>
-                    <p className="text-gray-500 text-sm md:text-base mt-1">
+                    <p className="text-black text-sm md:text-base mt-1">
                         Halaman khusus rekapitulasi penagihan dan penyaluran produk UMKM ke mitra perhotelan.
                     </p>
                 </div>
             </div>
 
             {/* Filter Bar */}
-            <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-gray-200 bg-white p-5">
                 <h3 className="text-xs font-extrabold uppercase tracking-wider text-gray-500 mb-4">
                     Filter Rekapitulasi
                 </h3>
@@ -184,7 +184,7 @@ export default function RekapHotelPage() {
                             type="button"
                             onClick={handleExportPdf}
                             disabled={exporting}
-                            className="flex-1 h-11 inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                            className="flex-1 h-11 inline-flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-black font-extrabold text-xs rounded-lg border border-amber-600 cursor-pointer disabled:opacity-50"
                         >
                             <FileText size={16} />
                             {exporting ? "Mengunduh..." : "Export PDF"}
@@ -194,7 +194,7 @@ export default function RekapHotelPage() {
             </div>
 
             {/* Table Section */}
-            <div className="bg-white rounded-4xl p-6 md:p-8 border border-gray-100 shadow-sm">
+            <div className="bg-white rounded-lg p-6 border border-gray-200">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <div>
                         <h2 className="text-xl font-extrabold text-blue-950">

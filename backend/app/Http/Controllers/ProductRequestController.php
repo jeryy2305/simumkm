@@ -33,8 +33,7 @@ class ProductRequestController extends Controller
             'quantity' => 'required|integer|min:1',
             'reference_price' => 'required|numeric|min:0',
             'partner_profit' => 'required|numeric|min:0',
-            'hotel_departure_date' => 'required|date',
-            'description' => 'nullable|string',
+            'tester_delivery_date' => 'required|date',
             'purpose' => 'nullable|string',
         ]);
 
@@ -44,8 +43,7 @@ class ProductRequestController extends Controller
             'quantity' => $request->quantity,
             'reference_price' => $request->reference_price,
             'partner_profit' => $request->partner_profit,
-            'hotel_departure_date' => $request->hotel_departure_date,
-            'description' => $request->description,
+            'tester_delivery_date' => $request->tester_delivery_date,
             'purpose' => $request->purpose,
             'status' => 'open',
             'participation_deadline' => now()->addDay(),
@@ -79,15 +77,14 @@ class ProductRequestController extends Controller
             'quantity' => 'required|integer|min:1',
             'reference_price' => 'nullable|numeric|min:0',
             'partner_profit' => 'nullable|numeric|min:0',
-            'hotel_departure_date' => 'nullable|date',
-            'description' => 'nullable|string',
+            'tester_delivery_date' => 'nullable|date',
             'purpose' => 'nullable|string',
             'status' => ['required', Rule::in(['open', 'pending_approval', 'taken', 'completed', 'cancelled'])],
         ]);
 
         $productRequest->update($request->only([
             'name', 'category', 'quantity', 'reference_price', 'partner_profit',
-            'hotel_departure_date', 'description', 'purpose', 'status',
+            'tester_delivery_date', 'purpose', 'status',
         ]));
 
         if (Auth::user()?->role === 'admin') {
@@ -127,18 +124,18 @@ class ProductRequestController extends Controller
                         $approved->where('status', 'taken')
                             ->where('updated_at', '>=', now()->subDay());
                         })
-                        ->orWhere(function ($expired) {
-                            $expired->where('status', 'expired')
-                                ->where('updated_at', '>=', now()->subDay());
-                            })
-                            ->orWhere(function ($unfulfilled) {
-                                $unfulfilled->where('status', 'unfulfilled')
-                                    ->where('updated_at', '>=', now()->subDay());
-                            })
-                            ->orWhere(function ($fulfilled) {
-                                $fulfilled->where('status', 'fulfilled')
-                                    ->where('updated_at', '>=', now()->subDay());
-                            });
+                    ->orWhere(function ($fulfilled) {
+                        $fulfilled->where('status', 'fulfilled')
+                            ->where('updated_at', '>=', now()->subDay());
+                    })
+                    ->orWhere(function ($expired) {
+                        $expired->where('status', 'expired')
+                            ->where('updated_at', '>=', now()->subDay());
+                    })
+                    ->orWhere(function ($unfulfilled) {
+                        $unfulfilled->where('status', 'unfulfilled')
+                            ->where('updated_at', '>=', now()->subDay());
+                    });
             })
             ->orderBy('created_at', 'desc')
             ->get();
@@ -188,7 +185,7 @@ class ProductRequestController extends Controller
             $requestItem->history_status = match ($requestItem->offer_status) {
                 'approved' => 'Masuk ke Mitra',
                 'rejected' => 'Ditolak',
-                'pending' => 'Menunggu Tester',
+                'pending' => $requestItem->status === 'pending_approval' ? 'Menunggu Persetujuan' : 'Menunggu Tester',
                 default => $this->resolveHistoryStatus($requestItem),
             };
             $requestItem->approval_notice = null;
@@ -237,7 +234,7 @@ class ProductRequestController extends Controller
         $productRequest->history_status = match ($productRequest->offer_status) {
             'approved' => 'Masuk ke Mitra',
             'rejected' => 'Ditolak',
-            'pending' => 'Menunggu Tester',
+            'pending' => $productRequest->status === 'pending_approval' ? 'Menunggu Persetujuan' : 'Menunggu Tester',
             default => $this->resolveHistoryStatus($productRequest),
         };
         $productRequest->approval_notice = null;
@@ -273,7 +270,7 @@ class ProductRequestController extends Controller
             ->first();
 
         if (!$product) {
-            return $productRequest->delivered_to_partner_at ? 'Masuk ke Mitra' : 'Sedang Diproses';
+            return 'Sedang Diproses';
         }
 
         $consignment = Consignment::where('product_id', $product->id)
@@ -282,7 +279,7 @@ class ProductRequestController extends Controller
             ->first();
 
         if (!$consignment) {
-            return $productRequest->delivered_to_partner_at ? 'Masuk ke Mitra' : 'Sedang Diproses';
+            return 'Sedang Diproses';
         }
 
         if ($consignment->status === 'completed') {
@@ -317,7 +314,7 @@ class ProductRequestController extends Controller
                 'description' => sprintf(
                     '%s mendaftarkan diri sebagai penyedia Tester (%s).',
                     $offer->umkm?->name ?? 'UMKM',
-                    $offer->status === 'rejected' ? 'ditolak' : ($offer->status === 'approved' ? 'disetujui dan masuk ke mitra' : 'menunggu tester')
+                    $offer->status === 'rejected' ? 'ditolak' : ($offer->status === 'approved' ? 'disetujui dan masuk ke mitra' : 'menunggu persetujuan')
                 ),
                 'timestamp' => $offer->created_at?->toIso8601String(),
             ];
@@ -333,7 +330,7 @@ class ProductRequestController extends Controller
 
         if ($umkmId === null && $productRequest->status === 'pending_approval') {
             $history[] = [
-            'title' => 'Menunggu Tester',
+            'title' => 'Menunggu Persetujuan',
             'description' => 'Peserta tester menunggu penilaian Admin.',
                 'timestamp' => $productRequest->updated_at?->toIso8601String(),
             ];
@@ -389,7 +386,16 @@ class ProductRequestController extends Controller
             return response()->json(['message' => 'Periode pengambilan request sudah berakhir'], 422);
         }
 
-        if ($productRequest->offers()->where('umkm_id', $umkm->id)->exists()) {
+        $previousOffer = $productRequest->offers()
+            ->where('umkm_id', $umkm->id)
+            ->latest('id')
+            ->first();
+
+        if ($previousOffer?->status === 'rejected') {
+            return response()->json(['message' => 'Pengajuan Anda untuk request ini sebelumnya ditolak dan tidak dapat diajukan kembali'], 422);
+        }
+
+        if ($previousOffer) {
             return response()->json(['message' => 'UMKM sudah terdaftar sebagai peserta tester'], 422);
         }
 
@@ -471,7 +477,9 @@ class ProductRequestController extends Controller
         }
 
         $offer->update(['status' => 'rejected']);
-        if (!$productRequest->offers()->whereIn('status', ['pending', 'approved'])->exists()) {
+        $totalOffers = $productRequest->offers()->count();
+        $rejectedOffers = $productRequest->offers()->where('status', 'rejected')->count();
+        if ($totalOffers > 0 && $totalOffers === $rejectedOffers) {
             $productRequest->update(['status' => 'unfulfilled']);
         }
 
@@ -506,7 +514,6 @@ class ProductRequestController extends Controller
             $productRequest->offers()->where('status', 'pending')->update(['status' => 'approved']);
             $productRequest->update([
                 'status' => 'taken',
-                'delivered_to_partner_at' => null,
             ]);
         });
 
@@ -559,48 +566,5 @@ class ProductRequestController extends Controller
         return response()->json(['request' => $productRequest->fresh()->load(['takenByUmkm', 'offers.umkm'])]);
     }
 
-    public function confirmDelivery(ProductRequest $productRequest)
-    {
-        if (Auth::user()?->role !== 'admin') {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        if ($productRequest->status !== 'taken') {
-            return response()->json(['message' => 'Request belum disetujui'], 422);
-        }
-
-        if ($productRequest->delivered_to_partner_at) {
-            return response()->json(['message' => 'Pengantaran produk sudah dikonfirmasi'], 422);
-        }
-
-        DB::transaction(function () use ($productRequest) {
-            Product::firstOrCreate([
-                'name' => $productRequest->name,
-                'category' => $productRequest->category,
-                'price' => $productRequest->price_offered,
-                'partner_profit' => $productRequest->partner_profit,
-                'hotel_price' => (float) $productRequest->price_offered + (float) $productRequest->partner_profit,
-                'quantity' => $productRequest->quantity,
-                'umkm_id' => $productRequest->taken_by_umkm_id,
-            ], [
-                'status' => 'available',
-            ]);
-
-            $productRequest->update(['delivered_to_partner_at' => now()]);
-        });
-
-        $umkmUserId = $productRequest->takenByUmkm?->user_id;
-        if ($umkmUserId) {
-            AppNotificationService::notifyUser(
-                $umkmUserId,
-                'Produk masuk katalog',
-                "Produk {$productRequest->name} sudah dikonfirmasi diantar dan masuk katalog.",
-                '/umkm/produk'
-            );
-        }
-
-        return response()->json([
-            'request' => $productRequest->fresh()->load(['takenByUmkm', 'offers.umkm']),
-        ]);
-    }
 }
+

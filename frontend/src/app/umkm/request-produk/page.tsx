@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { Search, Package, Tag, CheckCircle2, AlertCircle, History, ChevronRight, ArrowLeft, Calendar, Clock, Activity } from "lucide-react";
+import { Search, Package, Tag, CheckCircle2, AlertCircle, History, ChevronRight, ChevronDown, ArrowLeft, Clock, Activity, XCircle } from "lucide-react";
 import { API_URL, authFetch, parseJson } from "@/lib/auth";
 import Toast from "@/components/Toast";
 import { Modal } from "@/components/Modal";
@@ -14,7 +14,7 @@ interface ProductRequest {
   quantity: number;
   reference_price: number | null;
   price_offered: number | null;
-  hotel_departure_date?: string | null;
+  tester_delivery_date?: string | null;
   purpose?: string | null;
   status: "open" | "pending_approval" | "taken" | "completed" | "cancelled" | "expired" | "fulfilled" | "unfulfilled";
   taken_by_umkm?: { id: number; owner: string; name?: string } | null;
@@ -60,6 +60,7 @@ export default function RequestProdukUMKM() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isHistorySummaryOpen, setIsHistorySummaryOpen] = useState(false);
   const [historyData, setHistoryData] = useState<RequestHistoryResponse | null>(null);
   const [historyList, setHistoryList] = useState<HistoryListItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -69,9 +70,9 @@ export default function RequestProdukUMKM() {
     return [...items].sort((a, b) => b.id - a.id);
   };
 
-  const fetchRequests = useCallback(async () => {
+  const fetchRequests = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const response = await authFetch(`${API_URL}/api/umkm-user/product-requests`);
       if (!response.ok) {
         throw new Error("Gagal memuat request produk");
@@ -81,7 +82,7 @@ export default function RequestProdukUMKM() {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Terjadi kesalahan saat memuat request produk");
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, []);
 
@@ -89,7 +90,7 @@ export default function RequestProdukUMKM() {
     fetchRequests();
 
     const intervalId = window.setInterval(() => {
-      void fetchRequests();
+      void fetchRequests(false);
     }, 15000);
 
     return () => window.clearInterval(intervalId);
@@ -145,11 +146,6 @@ export default function RequestProdukUMKM() {
     return () => window.removeEventListener("product-request-focus", handleRequestFocus);
   }, [focusRequest, loading, requests]);
 
-  const openTakeModal = (request: ProductRequest) => {
-    setSelectedRequest(request);
-    setIsModalOpen(true);
-  };
-
   const formatDate = (value?: string | null) => {
     if (!value) return "—";
     const date = new Date(value);
@@ -169,34 +165,33 @@ export default function RequestProdukUMKM() {
 
   const formatDepartureTime = (value?: string | null) => value ? `${value.slice(0, 5)} WIB` : "Belum ditentukan";
 
-  const getHistoryStatusLabel = (status?: string) => {
-    switch (status) {
-      case "Menunggu Persetujuan":
-        return "Menunggu Tester";
-      case "Masuk ke Mitra":
-      case "Terpenuhi":
-        return "Terpenuhi";
-      case "Ditolak":
-        return "Ditolak";
-      case "Dalam Penyaluran":
-        return "Dalam Penyaluran";
-      case "Selesai Dititip":
-        return "Selesai Dititip";
-      case "Sudah Diantar":
-        return "Sudah Diantar";
-      case "Retur":
-        return "Retur";
-      case "Terbuka":
-        return "Terbuka";
-      default:
-        return "Sedang Ditinjau";
+  const getRequestStatusLabel = (request: ProductRequest) => {
+    if (request.status === "open" && request.offer_status === "pending") {
+      return "Menunggu Tester";
     }
+
+    if (request.status === "open") return "Terbuka";
+    if (request.status === "pending_approval") return "Menunggu Persetujuan";
+    if (request.status === "expired") return "Kedaluwarsa";
+    if (request.status === "fulfilled") return "Terpenuhi";
+    if (request.status === "unfulfilled") return "Tidak Terpenuhi";
+    return "Sudah Diambil";
+  };
+
+  const getRequestStatusClasses = (request: ProductRequest) => {
+    if (request.status === "open" && request.offer_status === "pending") {
+      return "bg-amber-100 text-amber-700";
+    }
+
+    if (request.status === "pending_approval") return "bg-orange-100 text-orange-700";
+
+    return request.status === "open" ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-700";
   };
 
   const getHistoryStatusClasses = (status?: string) => {
     switch (status) {
       case "Menunggu Persetujuan":
-        return "bg-slate-200 text-slate-700";
+        return "bg-orange-100 text-orange-700";
       case "Masuk ke Mitra":
         return "bg-blue-100 text-blue-700";
       case "Ditolak":
@@ -216,15 +211,32 @@ export default function RequestProdukUMKM() {
     }
   };
 
-  const getOfferStatusLabel = (status?: string) => {
+  const getHistoryStatusLabel = (request: ProductRequest) => {
+    if (request.offer_status === "pending" && request.status === "open") {
+      return "Menunggu Tester";
+    }
+
+    if (request.offer_status === "pending" && request.status === "pending_approval") {
+      return "Menunggu Persetujuan";
+    }
+
+    const status = request.offer_status;
     switch (status) {
       case "approved":
         return "Disetujui";
       case "rejected":
         return "Ditolak";
       default:
-        return "Menunggu Tester";
+        return "Menunggu Persetujuan";
     }
+  };
+
+  const getHistoryBadgeClasses = (request: ProductRequest) => {
+    if (request.offer_status === "pending" && request.status === "pending_approval") {
+      return "bg-orange-100 text-orange-700";
+    }
+
+    return getOfferStatusClasses(request.offer_status);
   };
 
   const getOfferStatusClasses = (status?: string) => {
@@ -243,6 +255,7 @@ export default function RequestProdukUMKM() {
     setHistoryLoading(true);
     setHistoryError(null);
     setHistoryData(null);
+    setIsHistorySummaryOpen(false);
 
     try {
       if (request) {
@@ -277,6 +290,11 @@ export default function RequestProdukUMKM() {
     setHistoryData(null);
     setHistoryList([]);
     setHistoryError(null);
+  };
+
+  const openTakeModal = (request: ProductRequest) => {
+    setSelectedRequest(request);
+    setIsModalOpen(true);
   };
 
   const handleTakeRequest = async (e: FormEvent<HTMLFormElement>) => {
@@ -328,7 +346,7 @@ export default function RequestProdukUMKM() {
       const term = searchTerm.toLowerCase();
       const statusLabelMap: Record<string, string> = {
         open: "terbuka",
-        pending_approval: "menunggu tester",
+        pending_approval: "menunggu persetujuan",
         expired: "kedaluwarsa",
         fulfilled: "terpenuhi",
         unfulfilled: "tidak terpenuhi",
@@ -416,8 +434,8 @@ export default function RequestProdukUMKM() {
                       </td>
                       <td className="py-4 px-6 text-center font-bold text-gray-700">{item.quantity}</td>
                       <td className="py-4 px-6">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${item.status === 'open' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>
-                          {item.status === 'open' ? 'Terbuka' : item.status === 'pending_approval' ? 'Menunggu Tester' : item.status === 'expired' ? 'Kedaluwarsa' : item.status === 'fulfilled' ? 'Terpenuhi' : item.status === 'unfulfilled' ? 'Tidak Terpenuhi' : 'Sudah Diambil'}
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${getRequestStatusClasses(item)}`}>
+                          {getRequestStatusLabel(item)}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-right">
@@ -425,14 +443,22 @@ export default function RequestProdukUMKM() {
                           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-gray-100 text-gray-400 text-sm font-semibold">
                             <AlertCircle size={16} /> {item.status === 'expired' ? 'Request Kedaluwarsa' : item.status === 'fulfilled' ? 'Request Terpenuhi' : 'Request Tidak Terpenuhi'}
                           </div>
-                        ) : item.offer_status === 'pending' ? (
+                        ) : item.status === 'open' && item.offer_status === 'pending' ? (
                           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-100 text-amber-800 text-sm font-semibold">
-                            <AlertCircle size={16} /> Antar tester ke mitra pada {formatDepartureDate(item.hotel_departure_date)}
+                            <AlertCircle size={16} /> Antar tester ke mitra pada {formatDepartureDate(item.tester_delivery_date)}
                           </div>
                         ) : item.offer_status === 'approved' ? (
                           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-100 text-emerald-800 text-sm font-semibold">
                             <CheckCircle2 size={16} /> Disetujui
                           </div>
+                        ) : item.offer_status === 'rejected' ? (
+                          <button
+                            type="button"
+                            disabled
+                            className="inline-flex cursor-not-allowed items-center gap-2 rounded-2xl bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-400"
+                          >
+                            <AlertCircle size={16} /> Pengajuan Ditolak
+                          </button>
                         ) : item.status === 'open' ? (
                           <button
                             type="button"
@@ -446,8 +472,8 @@ export default function RequestProdukUMKM() {
                             <Package size={16} /> Ambil Request
                           </button>
                         ) : item.status === 'pending_approval' ? (
-                          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-gray-200 text-gray-600 text-sm font-semibold">
-                            <AlertCircle size={16} /> Menunggu Tester
+                          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-orange-100 text-orange-700 text-sm font-semibold">
+                            <AlertCircle size={16} /> Menunggu Persetujuan
                           </div>
                         ) : (
                           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-100 text-slate-700 text-sm font-semibold">
@@ -481,8 +507,8 @@ export default function RequestProdukUMKM() {
                         <p className="text-sm font-extrabold text-gray-900">{item.name}</p>
                         <p className="text-xs text-gray-500 mt-1">{item.category}</p>
                       </div>
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${item.status === 'open' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>
-                        {item.status === 'open' ? 'Terbuka' : item.status === 'pending_approval' ? 'Menunggu Tester' : item.status === 'expired' ? 'Kedaluwarsa' : item.status === 'fulfilled' ? 'Terpenuhi' : item.status === 'unfulfilled' ? 'Tidak Terpenuhi' : 'Sudah Diambil'}
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${getRequestStatusClasses(item)}`}>
+                        {getRequestStatusLabel(item)}
                       </span>
                     </div>
 
@@ -502,7 +528,7 @@ export default function RequestProdukUMKM() {
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div className="rounded-3xl border border-blue-100 bg-blue-50/60 px-4 py-3">
                           <p className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600">Pengantaran Tester</p>
-                          <p className="mt-1 font-bold text-blue-950">{formatDepartureDate(item.hotel_departure_date)}</p>
+                          <p className="mt-1 font-bold text-blue-950">{formatDepartureDate(item.tester_delivery_date)}</p>
                         </div>
                       </div>
                     </div>
@@ -514,17 +540,25 @@ export default function RequestProdukUMKM() {
                         <div className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-100 px-4 py-3 text-sm font-semibold text-gray-400">
                           <AlertCircle size={16} /> {item.status === 'expired' ? 'Request Kedaluwarsa' : item.status === 'fulfilled' ? 'Request Terpenuhi' : 'Request Tidak Terpenuhi'}
                         </div>
-                      ) : item.offer_status === 'pending' ? (
+                      ) : item.status === 'open' && item.offer_status === 'pending' ? (
                         <div className="w-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
                           <div className="flex items-start gap-2">
                             <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-600" />
-                            <span>Produk tester wajib Anda antar ke mitra pada tanggal <strong>{formatDepartureDate(item.hotel_departure_date)}</strong>.</span>
+                            <span>Produk tester wajib Anda antar ke mitra pada tanggal <strong>{formatDepartureDate(item.tester_delivery_date)}</strong>.</span>
                           </div>
                         </div>
                       ) : item.offer_status === 'approved' ? (
                         <div className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-100 px-4 py-3 text-sm font-semibold text-emerald-800">
                           <CheckCircle2 size={16} /> Peserta disetujui
                         </div>
+                      ) : item.offer_status === 'rejected' ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl bg-gray-100 px-4 py-3 text-sm font-semibold text-gray-400"
+                        >
+                          <AlertCircle size={16} /> Pengajuan Ditolak
+                        </button>
                       ) : item.status === 'open' ? (
                         <button
                           type="button"
@@ -538,8 +572,8 @@ export default function RequestProdukUMKM() {
                           <Package size={16} /> Ambil Request
                         </button>
                       ) : item.status === 'pending_approval' ? (
-                        <div className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-300 px-4 py-3 text-sm font-semibold text-gray-600">
-                          <AlertCircle size={16} /> Menunggu Tester
+                        <div className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-100 px-4 py-3 text-sm font-semibold text-orange-700">
+                          <AlertCircle size={16} /> Menunggu Persetujuan
                         </div>
                       ) : (
                         <div className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700">
@@ -583,86 +617,159 @@ export default function RequestProdukUMKM() {
               </button>
             )}
 
-            <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50/90 via-indigo-50/40 to-blue-50/90 p-4 sm:p-5 shadow-xs">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-linear-to-r from-blue-50/90 via-indigo-50/40 to-blue-50/90 p-4 sm:p-5 shadow-xs">
+              <button
+                type="button"
+                onClick={() => setIsHistorySummaryOpen((isOpen) => !isOpen)}
+                className="flex w-full flex-wrap items-start justify-between gap-3 text-left"
+                aria-expanded={isHistorySummaryOpen}
+              >
                 <div>
                   <span className="inline-block px-2.5 py-0.5 rounded-md bg-blue-600/10 text-[10px] font-extrabold uppercase tracking-widest text-blue-700">
                     Request
                   </span>
                   <h3 className="mt-1 text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight">{historyData.request.name}</h3>
                 </div>
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider shadow-2xs ${getOfferStatusClasses(historyData.request.offer_status)}`}>
-                  {getOfferStatusLabel(historyData.request.offer_status)}
+                <span className="flex items-center gap-2">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider shadow-2xs ${getHistoryBadgeClasses(historyData.request)}`}>
+                    {getHistoryStatusLabel(historyData.request)}
+                  </span>
+                  <ChevronDown size={17} className={`shrink-0 text-blue-500 transition-transform ${isHistorySummaryOpen ? "rotate-180" : ""}`} />
                 </span>
-              </div>
-            </div>
-
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-              <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-3.5 sm:p-4 transition-all hover:bg-white hover:border-gray-200 hover:shadow-xs">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100/70 text-blue-600">
-                    <Package size={15} />
+              </button>
+              {isHistorySummaryOpen && (
+                <div className="mt-4 grid gap-3 border-t border-blue-100/70 pt-4 grid-cols-1 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-gray-100 bg-white p-3.5">
+                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500">Jumlah</p>
+                    <p className="mt-2 text-base font-extrabold text-gray-900">{historyData.request.quantity} <span className="text-xs font-medium text-gray-500">unit</span></p>
                   </div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500">Jumlah</p>
-                </div>
-                <p className="text-base font-extrabold text-gray-900 pl-0.5">{historyData.request.quantity} <span className="text-xs font-medium text-gray-500">unit</span></p>
-              </div>
 
-              <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-3.5 sm:p-4 transition-all hover:bg-white hover:border-gray-200 hover:shadow-xs">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100/70 text-emerald-600">
-                    <Tag size={15} />
+                  <div className="rounded-2xl border border-gray-100 bg-white p-3.5">
+                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500">Harga Produk</p>
+                    <p className="mt-2 text-base font-extrabold text-gray-900">
+                      {historyData.request.reference_price !== null && historyData.request.reference_price !== undefined
+                        ? `Rp ${Number(historyData.request.reference_price).toLocaleString("id-ID")}`
+                        : "—"}
+                    </p>
                   </div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500">Harga Produk</p>
-                </div>
-                <p className="text-base font-extrabold text-gray-900 pl-0.5">
-                  {historyData.request.reference_price !== null && historyData.request.reference_price !== undefined
-                    ? `Rp ${Number(historyData.request.reference_price).toLocaleString("id-ID")}`
-                    : "—"}
-                </p>
-              </div>
 
-              <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-3.5 sm:p-4 transition-all hover:bg-white hover:border-gray-200 hover:shadow-xs">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100/70 text-amber-600">
-                    <Calendar size={15} />
+                  <div className="rounded-2xl border border-gray-100 bg-white p-3.5">
+                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500">Tanggal Dibuat</p>
+                    <p className="mt-2 text-xs font-bold text-gray-800 leading-snug">{formatDate(historyData.request.created_at)}</p>
                   </div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500">Tanggal Dibuat</p>
                 </div>
-                <p className="text-xs font-bold text-gray-800 leading-snug pl-0.5">{formatDate(historyData.request.created_at)}</p>
-              </div>
+              )}
             </div>
 
             <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 sm:p-5">
-              <div className="flex items-center gap-2 mb-4 border-b border-gray-200/60 pb-3">
+              <div className="flex items-center gap-2 mb-5 border-b border-gray-200/60 pb-3">
                 <Activity size={16} className="text-blue-600" />
-                <h4 className="text-xs font-extrabold uppercase tracking-wider text-gray-700">Perubahan Status / Progress</h4>
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-gray-700">Tracking Permintaan</h4>
               </div>
 
-              {historyData.history.filter(item => item.title !== 'Request dibuat').length === 0 ? (
-                <div className="rounded-xl bg-white p-4 text-center text-xs font-semibold text-gray-400 border border-dashed border-gray-200">
-                  Belum ada riwayat perubahan status terbaru.
-                </div>
-              ) : (
-                <div className="relative pl-3 space-y-4 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-gray-200">
-                  {historyData.history.filter(item => item.title !== 'Request dibuat').map((item, index) => (
-                    <div key={`${item.title}-${index}`} className="relative flex items-start gap-3.5">
-                      <div className="relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-xs ring-4 ring-white">
-                        <CheckCircle2 size={14} />
-                      </div>
-                      <div className="flex-1 rounded-xl border border-gray-100 bg-white p-3.5 shadow-xs transition-all hover:border-gray-200">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <p className="text-sm font-extrabold text-gray-900">{item.title}</p>
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-md border border-gray-100">
-                            <Clock size={11} /> {formatDate(item.timestamp)}
-                          </span>
+              {(() => {
+                const offerStatus = historyData.request.offer_status;
+                const isApproved = offerStatus === 'approved';
+                const isRejected = offerStatus === 'rejected';
+                const isAwaitingApproval = historyData.request.status === 'pending_approval' && offerStatus === 'pending';
+                const isWaitingTester = historyData.request.status === 'open' && offerStatus === 'pending';
+
+                const testerEntry = historyData.history.find(h => h.title === 'Tester disiapkan');
+                const rejectedEntry = historyData.history.find(h => h.title === 'Pengajuan ditolak');
+                const takenEntry = historyData.history.find(h => h.title === 'Request diambil');
+
+                const steps: Array<{
+                  label: string;
+                  description: string;
+                  status: 'done' | 'active' | 'rejected' | 'pending' | 'warning';
+                  timestamp?: string;
+                }> = [
+                    {
+                      label: 'Mendaftar sebagai Tester',
+                      description: 'Anda mendaftarkan diri sebagai penyedia produk tester untuk request ini.',
+                      status: 'done',
+                      timestamp: testerEntry?.timestamp,
+                    },
+                    {
+                      label: isWaitingTester ? 'Menunggu Tester' : 'Tester Disiapkan',
+                      description: isApproved || isRejected || isAwaitingApproval
+                        ? 'Batas waktu Pengantaran Tester telah berakhir. Menunggu keputusan Admin.'
+                        : `Silahkan antar Tester pada tanggal ${formatDepartureDate(historyData.request.tester_delivery_date)}.`,
+                      status: isApproved || isRejected || isAwaitingApproval ? 'done' : 'warning',
+                      timestamp: isApproved ? (takenEntry?.timestamp ?? rejectedEntry?.timestamp) : isRejected ? rejectedEntry?.timestamp : undefined,
+                    },
+                    {
+                      label: isRejected ? 'Tester Ditolak' : isApproved ? 'Tester Disetujui' : 'Menunggu Persetujuan',
+                      description: isRejected
+                        ? (rejectedEntry?.description ?? 'Produk tester Anda tidak memenuhi kriteria yang ditentukan oleh Admin.')
+                        : isApproved
+                          ? 'Produk Anda lolos tester dan resmi masuk sebagai penyedia produk.'
+                          : isAwaitingApproval
+                            ? 'Admin sedang mencoba dan memeriksa produk tester peserta'
+                            : 'Menunggu batas tester berakhir.',
+                      status: isApproved ? 'done' : isRejected ? 'rejected' : isAwaitingApproval ? 'active' : 'pending',
+                      timestamp: isApproved ? takenEntry?.timestamp : isRejected ? rejectedEntry?.timestamp : undefined,
+                    },
+                  ];
+
+                return (
+                  <div className="space-y-0">
+                    {steps.map((step, index) => {
+                      const isLast = index === steps.length - 1;
+                      const isDone = step.status === 'done';
+                      const isActive = step.status === 'active';
+                      const isRej = step.status === 'rejected';
+                      const isPending = step.status === 'pending';
+                      const isWarning = step.status === 'warning';
+                      return (
+                        <div key={index} className="flex gap-3">
+                          <div className="flex flex-col items-center">
+                            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white shadow-sm transition-all
+                              ${isDone ? 'bg-emerald-500' : isActive ? 'bg-blue-600 ring-4 ring-blue-100' : isRej ? 'bg-red-500' : isWarning ? 'bg-amber-400 ring-4 ring-amber-100' : 'bg-gray-200'}
+                            `}>
+                              {isDone && <CheckCircle2 size={16} />}
+                              {isActive && <Activity size={14} className="animate-pulse" />}
+                              {isRej && <XCircle size={16} />}
+                              {isWarning && <AlertCircle size={16} />}
+                              {isPending && <span className="text-xs font-bold text-gray-400">{index + 1}</span>}
+                            </div>
+                            {!isLast && (
+                              <div className={`w-0.5 flex-1 my-1 min-h-7 ${isDone ? 'bg-emerald-300' : 'bg-gray-200'}`} />
+                            )}
+                          </div>
+                          <div className="flex-1 pb-5 pt-0.5 min-w-0">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className={`text-sm font-extrabold ${isRej ? 'text-red-700' : isDone ? 'text-gray-900' : isActive ? 'text-blue-700' : isWarning ? 'text-amber-700' : 'text-gray-400'}`}>
+                                {step.label}
+                              </p>
+                              {step.timestamp && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-400 bg-white px-2 py-0.5 rounded-md border border-gray-100 shadow-xs">
+                                  <Clock size={10} /> {formatDate(step.timestamp)}
+                                </span>
+                              )}
+                            </div>
+                            <p className={`mt-0.5 text-xs leading-relaxed ${isRej ? 'text-red-500' : isWarning ? 'text-amber-700 font-semibold' : 'text-gray-500'}`}>
+                              {step.description}
+                            </p>
+                            {isActive && (
+                              <span className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded-full">
+                                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse inline-block" />
+                                Sedang Berlangsung
+                              </span>
+                            )}
+                            {isWarning && (
+                              <span className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse inline-block" />
+                                Perlu Tindakan
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <p className="mt-1 text-xs text-gray-600 leading-relaxed">{item.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         ) : historyList.length > 0 ? (
@@ -682,8 +789,8 @@ export default function RequestProdukUMKM() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider shadow-2xs ${getOfferStatusClasses(item.offer_status)}`}>
-                    {getOfferStatusLabel(item.offer_status)}
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider shadow-2xs ${getHistoryBadgeClasses(item)}`}>
+                    {getHistoryStatusLabel(item)}
                   </span>
                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-50 text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
                     <ChevronRight size={16} />
@@ -728,7 +835,7 @@ export default function RequestProdukUMKM() {
                 Setelah konfirmasi, silakan siapkan <strong>Tester</strong> untuk diantar ke mitra pada tanggal yang ditentukan.
               </p>
               <p className="mt-2 text-xs font-bold text-amber-700">
-                Tanggal antar ke mitra: {formatDepartureDate(selectedRequest?.hotel_departure_date)}
+                Tanggal antar ke mitra: {formatDepartureDate(selectedRequest?.tester_delivery_date)}
               </p>
             </div>
           </div>
